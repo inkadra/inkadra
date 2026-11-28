@@ -8,6 +8,7 @@ import {
   BOARD_WRITERS_CAPABILITY,
   CLASSIFICATION_DELETE_CAPABILITY,
   COLLAB_PATH,
+  CONDITIONAL_RESTORE_CAPABILITY,
   CREW_ONE_ROW_PER_CHARACTER_CAPABILITY,
   DIAGNOSTIC_PROXY_TRUST_CAPABILITY,
   ELEMENT_DATA_MOVE_CAPABILITY,
@@ -200,6 +201,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         DIAGNOSTIC_PROXY_TRUST_CAPABILITY,
         // POST /boards/{id}/element-data/move: a card's comments and reviews follow it (0140).
         ELEMENT_DATA_MOVE_CAPABILITY,
+        // `restoreCards` on a board's connection: cards put back only if absent (0142).
+        CONDITIONAL_RESTORE_CAPABILITY,
         // Settings → Server runs the load test (#908): only where a worker can run it.
         ...(deps.jobs.runLoadTest ? [LOAD_TEST_CAPABILITY] : []),
         // Only where live playback actually runs: a GPU fast enough, and turned on (0128).
