@@ -488,7 +488,8 @@ test('the PDF options make a pitch, a production book and a team storyboard, rem
   // 2. From the shot list the dialog exports the shot list: a production book for the team, A4
   // portrait, every frame, with the call sheet.
   await page.getByRole('tab', { name: 'Shot list' }).click();
-  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  await page.getByRole('button', { name: 'Esporta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^PDF/ }).click();
   await choose('Il team');
   await chooseSelect(dialog.getByRole('combobox', { name: 'Formato pagina' }), 'a4');
   await choose('Verticale');

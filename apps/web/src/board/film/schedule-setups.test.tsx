@@ -159,16 +159,16 @@ const queue = (host: HTMLElement) => host.querySelector('.schedule__queue') as H
 
 it('groups the queue by scene until this person picks Setup, saved in their preferences', async () => {
   const { host } = await mount();
-  const select = queue(host).querySelector<HTMLButtonElement>(
-    '[role="combobox"][aria-label="film.list.groupBy"]',
-  );
+  // Group by is a menu button in the queue's bar.
+  const select = queue(host).querySelector<HTMLButtonElement>('.schedule__group-by');
+  expect(select?.getAttribute('aria-haspopup')).toBe('menu');
   expect(select?.textContent).toContain('film.list.groupScene');
   expect(queue(host).querySelector('.schedule__setup')).toBeNull();
-  // happy-dom has no popover API, which the shared Select opens its list with.
+  // happy-dom has no popover API, which the menu opens with.
   HTMLElement.prototype.showPopover ??= () => {};
   HTMLElement.prototype.hidePopover ??= () => {};
   await act(async () => select?.click());
-  const option = [...document.querySelectorAll('[role="option"]')].find((o) =>
+  const option = [...document.querySelectorAll('[role="menuitemradio"]')].find((o) =>
     o.textContent?.includes('film.list.groupSetup'),
   ) as HTMLElement;
   await act(async () => option.click());
@@ -236,7 +236,7 @@ it('offers no grouping on a board without set plans', async () => {
     store.destroy();
     doc.destroy();
   });
-  expect(queue(host).querySelector('[aria-label="film.list.groupBy"]')).toBeNull();
+  expect(queue(host).querySelector('.schedule__group-by')).toBeNull();
   expect(queue(host).querySelector('.schedule__setup')).toBeNull();
 });
 

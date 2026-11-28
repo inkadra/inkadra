@@ -361,24 +361,16 @@
   padding-left: 30px;
   font-size: 12px;
 }
+/* Search, Filters and Group by on one row; Group by wraps under them when the column is narrow. */
 .schedule__filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
-.schedule__filters .ink-select {
-  flex: 1;
+.schedule__filters > .schedule__search {
+  flex: 1 1 120px;
   min-width: 0;
-  width: auto;
-  max-width: 100%;
-  height: 26px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-full);
-  background-color: var(--ink-surface-1);
-  font-size: 12px;
-}
-.schedule__filters .ink-select:hover:not(:disabled) {
-  border-color: var(--ink-border-strong);
 }
 .schedule__scene {
   display: grid;
@@ -401,15 +393,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
-   label does not fit beside the scene filter. */
+/* "Group by: Setup": a scene's shots under their setups (decision 0115). Beside Search and
+   Filters when it fits, under them when the column is narrow. */
 .schedule__filters .schedule__group-by {
-  flex-basis: 100%;
-}
-/* The Storyboard filter of the Production board takes its own row (decision 0123). */
-.schedule__filter {
-  display: flex;
-  flex-basis: 100%;
+  flex: 0 1 auto;
   min-width: 0;
 }
 /* "Group by: Setup": a scene's shots under their setups (decision 0115). */

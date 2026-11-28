@@ -3490,6 +3490,7 @@
     "densityLabel": "Densité",
     "densityCompact": "Compact",
     "densityComfy": "Confortable",
+    "allStoryboards": "Tous les storyboards",
     "altFixedHint": "Alt : heure fixe",
     "editBlock": "Modifier",
     "fixTime": "Fixer l’heure",
@@ -5625,7 +5626,7 @@
           },
           "1": {
             "title": "Storyboards et barres",
-            "text": "Le filtre Storyboard montre les plans d’un seul ; la barre de couleur à gauche de chaque bloc indique de quel storyboard il vient. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une barre grise : storyboard indisponible, l’étiquette reste."
+            "text": "Dans Filtres, le filtre Storyboard montre les plans d’un seul ; la barre de couleur à gauche de chaque bloc indique de quel storyboard il vient. « Planifier la scène entière » met une scène dans un bloc, même avant de la dessiner. Une barre grise : storyboard indisponible, l’étiquette reste."
           },
           "2": {
             "title": "Déplacer et allonger",
@@ -7216,5 +7217,23 @@
     "lateLost_one": "Une partie n’a pas pu suivre : vérifiez cette scène.",
     "lateLost_other": "Certaines parties n’ont pas pu suivre : vérifiez ces {{count}} scènes.",
     "empty": "« {{title}} » est maintenant vide : vous pouvez le supprimer."
+  },
+  "filterBar": {
+    "filters": "Filtres",
+    "filtersActive_one": "Filtres, {{count}} actif",
+    "filtersActive_other": "Filtres, {{count}} actifs",
+    "clear": "Effacer les filtres",
+    "view": "Vue",
+    "viewName": "Vue : grouper par {{group}}, {{sort}}",
+    "export": "Exporter",
+    "csvHint": "tableur",
+    "pdfHint": "à imprimer",
+    "showShots_one": "Afficher {{count}} plan",
+    "showShots_other": "Afficher {{count}} plans",
+    "showQueue": "Afficher {{what}}",
+    "showProjects_one": "Afficher {{count}} projet",
+    "showProjects_other": "Afficher {{count}} projets",
+    "shownProjects_one": "{{shown}} sur {{count}} projet",
+    "shownProjects_other": "{{shown}} sur {{count}} projets"
   }
 }

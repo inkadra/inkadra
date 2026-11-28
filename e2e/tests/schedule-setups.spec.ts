@@ -89,10 +89,10 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   const queue = schedule.locator('.schedule__queue');
-  const group = queue.getByRole('combobox', { name: 'Raggruppa per' });
+  const group = queue.getByRole('button', { name: /^Raggruppa per/ });
   await expect(group).toContainText('Scena');
   await group.click();
-  await page.getByRole('option', { name: 'Raggruppa per: Setup' }).click();
+  await page.getByRole('menuitemradio', { name: 'Setup' }).click();
   const setups = queue.locator('.schedule__setup-title');
   await expect(setups).toHaveText(['1 · Base', '2 · Primo piano', 'Senza setup']);
   await expect(queue.locator('.schedule__setup').nth(1)).toContainText('Primo piano di Rosa');
@@ -107,7 +107,7 @@ test('the schedule groups by setup, saved on the account and shared with the sho
   await expect(setups).toHaveText(['1 · Base', '2 · Primo piano', 'Senza setup']);
   // The storyboard's shot list groups the same way.
   await page.goto(`/p/${project.id}/b/${root}?view=shotlist`);
-  await expect(page.getByRole('combobox', { name: 'Raggruppa per' })).toContainText(
-    'Raggruppa per: Setup',
+  await expect(page.getByRole('button', { name: /^Vista: raggruppa per/ })).toHaveAccessibleName(
+    'Vista: raggruppa per Setup, Ordine storyboard',
   );
 });

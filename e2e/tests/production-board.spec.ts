@@ -70,11 +70,16 @@ test('plans frames of two storyboards and a scene without frames on the Producti
   const queue = schedule.locator('.schedule__queue');
   // The queue groups the frames by storyboard, each with its dot.
   await expect(queue.locator('.schedule__source-title')).toHaveText(['Teaser', 'Film']);
-  const filter = queue.getByRole('combobox', { name: 'Filtra per storyboard' });
-  await chooseSelect(filter, { label: 'Teaser' });
+  // The Storyboard filter is in the queue's Filters panel; Escape closes it.
+  const filterBy = async (label: string) => {
+    await queue.getByRole('button', { name: /^Filtri/ }).click();
+    await chooseSelect(page.getByRole('combobox', { name: 'Filtra per storyboard' }), { label });
+    await page.keyboard.press('Escape');
+  };
+  await filterBy('Teaser');
   await expect(queue.locator('.schedule__source-title')).toHaveText(['Teaser']);
   await queue.locator('.schedule__shot:not(.schedule__shot--scene)', { hasText: '1A' }).click();
-  await chooseSelect(filter, { label: 'Film' });
+  await filterBy('Film');
   await queue.locator('.schedule__shot:not(.schedule__shot--scene)', { hasText: '1A' }).click();
   // A scene planned as a whole, before its frames are drawn (answer 4).
   await queue.locator('.schedule__shot--scene', { hasText: 'Ancora senza inquadrature' }).click();

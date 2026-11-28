@@ -3490,6 +3490,7 @@
     "densityLabel": "Densità",
     "densityCompact": "Compatto",
     "densityComfy": "Comodo",
+    "allStoryboards": "Tutti gli storyboard",
     "altFixedHint": "Alt: orario fisso",
     "editBlock": "Modifica",
     "fixTime": "Fissa orario",
@@ -5625,7 +5626,7 @@
           },
           "1": {
             "title": "Storyboard e barrette",
-            "text": "Il filtro Storyboard mostra le inquadrature di uno solo; la barretta colorata a sinistra di ogni blocco dice da quale storyboard arriva. «Pianifica la scena intera» mette una scena in un blocco, anche prima di disegnarla. Una barretta grigia: storyboard non disponibile, resta l’etichetta."
+            "text": "In Filtri, il filtro Storyboard mostra le inquadrature di uno solo; la barretta colorata a sinistra di ogni blocco dice da quale storyboard arriva. «Pianifica la scena intera» mette una scena in un blocco, anche prima di disegnarla. Una barretta grigia: storyboard non disponibile, resta l’etichetta."
           },
           "2": {
             "title": "Sposta e allunga",
@@ -7216,5 +7217,23 @@
     "lateLost_one": "Una parte non ha potuto seguirla: controlla quella scena.",
     "lateLost_other": "Alcune parti non hanno potuto seguirle: controlla quelle {{count}} scene.",
     "empty": "«{{title}}» ora è vuoto: puoi eliminarlo."
+  },
+  "filterBar": {
+    "filters": "Filtri",
+    "filtersActive_one": "Filtri, {{count}} attivo",
+    "filtersActive_other": "Filtri, {{count}} attivi",
+    "clear": "Azzera filtri",
+    "view": "Vista",
+    "viewName": "Vista: raggruppa per {{group}}, {{sort}}",
+    "export": "Esporta",
+    "csvHint": "foglio di calcolo",
+    "pdfHint": "da stampare",
+    "showShots_one": "Mostra {{count}} inquadratura",
+    "showShots_other": "Mostra {{count}} inquadrature",
+    "showQueue": "Mostra {{what}}",
+    "showProjects_one": "Mostra {{count}} progetto",
+    "showProjects_other": "Mostra {{count}} progetti",
+    "shownProjects_one": "{{shown}} di {{count}} progetto",
+    "shownProjects_other": "{{shown}} di {{count}} progetti"
   }
 }

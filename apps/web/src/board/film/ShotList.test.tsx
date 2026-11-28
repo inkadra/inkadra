@@ -6,6 +6,15 @@ import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
 import { chooseSelect } from '../../test/select.ts';
+
+/** Opens the Filters panel of the bar, where the filter Selects are. */
+function openFilters(host: HTMLElement) {
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+  const button = host.querySelector<HTMLButtonElement>('.filter-bar__button');
+  if (button?.getAttribute('aria-expanded') !== 'true') button?.click();
+}
+
 import { walkTabs } from '../../test/tabs.ts';
 import { resetReviews } from '../review-store.ts';
 import { BoardStore } from '../store.ts';
@@ -184,6 +193,7 @@ it('applies bulk actions only to visible rows, prunes selection on filter change
   expect(toolbar?.textContent).toContain('2 selected');
 
   // Filter to show only ready status (frame 1B)
+  await act(async () => openFilters(host));
   const filterSelect = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="Status"]');
   expect(filterSelect).not.toBeNull();
   await act(async () => {
@@ -398,6 +408,7 @@ it('counts and filters a shot approved in review as approved in the Kanban only'
   const dots = () =>
     [...host.querySelectorAll('.shots__footer-dot-item')].map((d) => d.textContent?.trim());
   const filterTo = async (value: string) => {
+    await act(async () => openFilters(host));
     const filter = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="Status"]');
     await act(async () => {
       if (filter) chooseSelect(filter, value);
@@ -446,9 +457,15 @@ it('lists a shot under each of its setups but counts it once', async () => {
     { userId: null },
   );
   const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
-  await act(async () => {
-    chooseSelect(host.querySelector('.ink-select[aria-label="Group by"]'), 'setup');
-  });
+  // Group by is in the View menu.
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+  await act(async () => host.querySelector<HTMLButtonElement>('.filter-bar__menu-button')?.click());
+  const setup = [...host.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find(
+    (item) => item.textContent === 'Setup',
+  );
+  expect(setup?.getAttribute('aria-checked')).toBe('false');
+  await act(async () => setup?.click());
   // Under both setups…
   expect(host.querySelectorAll('tr.shots__scene')).toHaveLength(2);
   // …but one shot in the totals and one box to select.

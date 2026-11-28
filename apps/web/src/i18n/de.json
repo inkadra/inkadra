@@ -3490,6 +3490,7 @@
     "densityLabel": "Dichte",
     "densityCompact": "Kompakt",
     "densityComfy": "Bequem",
+    "allStoryboards": "Alle Storyboards",
     "altFixedHint": "Alt: feste Zeit",
     "editBlock": "Bearbeiten",
     "fixTime": "Startzeit fixieren",
@@ -5625,7 +5626,7 @@
           },
           "1": {
             "title": "Storyboards und Balken",
-            "text": "Der Filter Storyboard zeigt die Shots eines einzigen; der farbige Balken links an jedem Block zeigt, aus welchem Storyboard er stammt. „Ganze Szene planen“ setzt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Balken: Storyboard nicht verfügbar, die Beschriftung bleibt."
+            "text": "Unter Filter zeigt der Filter Storyboard die Shots eines einzigen; der farbige Balken links an jedem Block zeigt, aus welchem Storyboard er stammt. „Ganze Szene planen“ setzt eine Szene in einen Block, auch bevor sie gezeichnet ist. Ein grauer Balken: Storyboard nicht verfügbar, die Beschriftung bleibt."
           },
           "2": {
             "title": "Verschieben und dehnen",
@@ -7216,5 +7217,23 @@
     "lateLost_one": "Ein Teil konnte nicht mitkommen: Prüfe diese Szene.",
     "lateLost_other": "Teile konnten nicht mitkommen: Prüfe diese {{count}} Szenen.",
     "empty": "„{{title}}“ ist jetzt leer: Du kannst es löschen."
+  },
+  "filterBar": {
+    "filters": "Filter",
+    "filtersActive_one": "Filter, {{count}} aktiv",
+    "filtersActive_other": "Filter, {{count}} aktiv",
+    "clear": "Filter zurücksetzen",
+    "view": "Ansicht",
+    "viewName": "Ansicht: gruppiert nach {{group}}, {{sort}}",
+    "export": "Exportieren",
+    "csvHint": "Tabelle",
+    "pdfHint": "zum Drucken",
+    "showShots_one": "{{count}} Einstellung zeigen",
+    "showShots_other": "{{count}} Einstellungen zeigen",
+    "showQueue": "{{what}} zeigen",
+    "showProjects_one": "{{count}} Projekt zeigen",
+    "showProjects_other": "{{count}} Projekte zeigen",
+    "shownProjects_one": "{{shown}} von {{count}} Projekt",
+    "shownProjects_other": "{{shown}} von {{count}} Projekten"
   }
 }

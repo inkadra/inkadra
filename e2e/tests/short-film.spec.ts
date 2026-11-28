@@ -512,16 +512,26 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await bulk.getByRole('button', { name: 'Deseleziona' }).click();
     await chooseSelect(rowOf('3B').getByLabel('Stato', { exact: true }), 'todo');
     await rowOf('3B').getByLabel('Stato', { exact: true }).blur();
-    const byStatus = page.locator('.story__bar').getByLabel('Stato', { exact: true });
+    // The filters are in the Filters panel of the bar.
+    const filters = page.locator('.story__bar').getByRole('button', { name: /^Filtri/ });
+    await filters.click();
+    const panel = page.getByRole('dialog', { name: 'Filtri' });
+    const byStatus = panel.getByLabel('Stato', { exact: true });
     await chooseSelect(byStatus, 'todo');
     await expect(rows).toHaveCount(7);
+    await expect(filters).toHaveAccessibleName('Filtri, 1 attivo');
     await chooseSelect(byStatus, '');
     await expect(rows).toHaveCount(30);
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
 
     // The CSV has a header and one row per shot, as the table.
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: 'Esporta CSV' }).click(),
+      page
+        .getByRole('button', { name: 'Esporta', exact: true })
+        .click()
+        .then(() => page.getByRole('menuitem', { name: /^CSV/ }).click()),
     ]);
     const csvPath = info.outputPath('shotlist.csv');
     await download.saveAs(csvPath);

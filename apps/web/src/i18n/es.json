@@ -3490,6 +3490,7 @@
     "densityLabel": "Densidad",
     "densityCompact": "Compacto",
     "densityComfy": "Cómodo",
+    "allStoryboards": "Todos los storyboards",
     "altFixedHint": "Alt: hora fija",
     "editBlock": "Editar",
     "fixTime": "Fijar hora",
@@ -5625,7 +5626,7 @@
           },
           "1": {
             "title": "Storyboards y barras",
-            "text": "El filtro Storyboard muestra los planos de uno solo; la barra de color a la izquierda de cada bloque indica de qué storyboard viene. «Planificar la escena completa» pone una escena en un bloque, incluso antes de dibujarla. Una barra gris: storyboard no disponible, queda su etiqueta."
+            "text": "En Filtros, el filtro Storyboard muestra los planos de uno solo; la barra de color a la izquierda de cada bloque indica de qué storyboard viene. «Planificar la escena completa» pone una escena en un bloque, incluso antes de dibujarla. Una barra gris: storyboard no disponible, queda su etiqueta."
           },
           "2": {
             "title": "Mueve y alarga",
@@ -7216,5 +7217,23 @@
     "lateLost_one": "Una parte no pudo seguirla: revisa esa escena.",
     "lateLost_other": "Algunas partes no pudieron seguirlas: revisa esas {{count}} escenas.",
     "empty": "«{{title}}» está vacío: puedes eliminarlo."
+  },
+  "filterBar": {
+    "filters": "Filtros",
+    "filtersActive_one": "Filtros, {{count}} activo",
+    "filtersActive_other": "Filtros, {{count}} activos",
+    "clear": "Borrar filtros",
+    "view": "Vista",
+    "viewName": "Vista: agrupar por {{group}}, {{sort}}",
+    "export": "Exportar",
+    "csvHint": "hoja de cálculo",
+    "pdfHint": "para imprimir",
+    "showShots_one": "Mostrar {{count}} plano",
+    "showShots_other": "Mostrar {{count}} planos",
+    "showQueue": "Mostrar {{what}}",
+    "showProjects_one": "Mostrar {{count}} proyecto",
+    "showProjects_other": "Mostrar {{count}} proyectos",
+    "shownProjects_one": "{{shown}} de {{count}} proyecto",
+    "shownProjects_other": "{{shown}} de {{count}} proyectos"
   }
 }
