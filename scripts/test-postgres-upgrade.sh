@@ -91,6 +91,15 @@ fail() {
 }
 
 c() { curl -s --max-time 30 -H "Origin: $url" -H 'Content-Type: application/json' "$@"; }
+# The container is healthy once it listens; migrations may still run, and the API answers
+# "starting" until they are done.
+ready() {
+  for _ in $(seq 1 90); do
+    [[ $(c "$url/api/v1/health" || true) == *'"status":"ok"'* ]] && return 0
+    sleep 1
+  done
+  fail "no health answer within 90 s"
+}
 jar="$work/cookies"
 sign_up() { c -o /dev/null -w '%{http_code}' -c "$jar" --data "{\"name\":\"Upgrade Test\",\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-up/email"; }
 sign_in() { c -o /dev/null -w '%{http_code}' -c "$jar" --data "{\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-in/email"; }
@@ -107,6 +116,7 @@ echo "== PostgreSQL $from to 19 ($mode)"
 # ---------------------------------------------------------------- before: the older version
 stack=old
 old up -d --quiet-pull --wait --wait-timeout 180
+ready
 [[ $(major) == "$from" ]] && pass "starts on PostgreSQL $from ($old_file)" ||
   fail "expected PostgreSQL $from, got $(version)"
 
@@ -209,6 +219,7 @@ else
 fi
 
 now up -d --wait --wait-timeout 180
+ready
 pass "app starts on PostgreSQL 19"
 [[ $(migrations) -ge $migrations_before ]] && pass "all migrations applied ($migrations_before before, $(migrations) now)" ||
   fail "migrations: $migrations_before before, $(migrations) now"
@@ -242,6 +253,7 @@ old up -d --quiet-pull --wait --wait-timeout 120 postgres
 old run --rm inkadra backup restore "$backup_file" >"$work/restore-rollback.log" 2>&1 &&
   pass "rollback: backup made on 19 restored into $from" || fail "rollback restore: $(tail -n8 "$work/restore-rollback.log")"
 old up -d --wait --wait-timeout 180
+ready
 [[ $(sign_in) == 200 ]] && p=$(projects) || p=
 [[ $p == *"Before the upgrade"* && $p == *"After the upgrade"* ]] && pass "rollback: both projects there, sign-in works" ||
   fail "rollback: projects after restore: $p"
@@ -253,6 +265,7 @@ if [[ $mode == dump ]]; then
   unset POSTGRES_DATA
   sed -i '/^POSTGRES_DATA=/d' "$work/.env"
   old up -d --wait --wait-timeout 180
+  ready
   [[ $(sign_in) == 200 ]] && p=$(projects) || p=
   [[ $p == *"Before the upgrade"* && $p != *"After the upgrade"* ]] && pass "rollback: old volume untouched" ||
     fail "rollback: old volume has: $p"
