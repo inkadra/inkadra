@@ -42,11 +42,30 @@ it('shows how many filters are on, clears them, and closes on Escape back to the
   expect(document.activeElement).toBe(panel?.querySelector('input'));
   await act(async () => panel?.querySelector<HTMLButtonElement>('.filter-bar__clear')?.click());
   expect(clear).toHaveBeenCalledOnce();
+  // Clear filters turns disabled once nothing filters: the focus stays in the panel.
+  expect(panel?.contains(document.activeElement)).toBe(true);
   await act(async () =>
     panel?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
   );
   expect(host.querySelector('[role="dialog"]')).toBeNull();
   expect(document.activeElement).toBe(button);
+});
+
+it('closes when the focus tabs out of the panel', async () => {
+  const after = document.createElement('button');
+  document.body.append(after);
+  await act(async () =>
+    root.render(
+      <FilterButton count={1} showLabel="Show" onClear={() => {}}>
+        <input aria-label="Scene" />
+      </FilterButton>,
+    ),
+  );
+  await act(async () => host.querySelector<HTMLButtonElement>('.filter-bar__button')?.click());
+  expect(host.querySelector('[role="dialog"]')).not.toBeNull();
+  await act(async () => after.focus());
+  expect(host.querySelector('[role="dialog"]')).toBeNull();
+  after.remove();
 });
 
 it('has no badge and a disabled Clear filters with no filter on', async () => {

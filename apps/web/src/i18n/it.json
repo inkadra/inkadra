@@ -7226,6 +7226,7 @@
     "pdfHint": "da stampare",
     "showShots_one": "Mostra {{count}} inquadratura",
     "showShots_other": "Mostra {{count}} inquadrature",
+    "showQueue": "Mostra {{what}}",
     "showProjects_one": "Mostra {{count}} progetto",
     "showProjects_other": "Mostra {{count}} progetti",
     "shownProjects_one": "{{shown}} di {{count}} progetto",

@@ -279,7 +279,9 @@ export function ScheduleQueue({
             <FilterButton
               count={[board, scene, cast].filter(Boolean).length}
               summary={queueSummary(t, shownShots, shownScenes)}
-              showLabel={t('filterBar.showShots', { count: shownShots })}
+              showLabel={t('filterBar.showQueue', {
+                what: queueSummary(t, shownShots, shownScenes),
+              })}
               onClear={() => {
                 setBoard('');
                 setScene('');

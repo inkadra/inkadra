@@ -393,32 +393,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
-   label does not fit beside the scene filter. */
+/* "Group by: Setup": a scene's shots under their setups (decision 0115). Beside Search and
+   Filters when it fits, under them when the column is narrow. */
 .schedule__filters .schedule__group-by {
   flex: 0 1 auto;
-  min-width: 0;
-}
-/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
-   label does not fit beside the scene filter. */
-.schedule__filters .schedule__group-by {
-  flex-basis: 100%;
-}
-/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
-   label does not fit beside the scene filter. */
-.schedule__filters .schedule__group-by {
-  flex: 0 1 auto;
-  min-width: 0;
-}
-/* "Group by: Setup": a scene's shots under their setups (decision 0115). Its own row: the
-   label does not fit beside the scene filter. */
-.schedule__filters .schedule__group-by {
-  flex-basis: 100%;
-}
-/* The Storyboard filter of the Production board takes its own row (decision 0123). */
-.schedule__filter {
-  display: flex;
-  flex-basis: 100%;
   min-width: 0;
 }
 /* "Group by: Setup": a scene's shots under their setups (decision 0115). */

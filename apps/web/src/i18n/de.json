@@ -7226,6 +7226,7 @@
     "pdfHint": "zum Drucken",
     "showShots_one": "{{count}} Einstellung zeigen",
     "showShots_other": "{{count}} Einstellungen zeigen",
+    "showQueue": "{{what}} zeigen",
     "showProjects_one": "{{count}} Projekt zeigen",
     "showProjects_other": "{{count}} Projekte zeigen",
     "shownProjects_one": "{{shown}} von {{count}} Projekt",

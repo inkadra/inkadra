@@ -94,7 +94,17 @@ export function FilterButton({
   }, [open, phone]);
   const name = count ? t('filterBar.filtersActive', { count }) : t('filterBar.filters');
   const clear = (
-    <Button variant="ghost" className="filter-bar__clear" disabled={!count} onClick={onClear}>
+    <Button
+      variant="ghost"
+      className="filter-bar__clear"
+      disabled={!count}
+      onClick={() => {
+        // Clear filters turns disabled: the focus moves to the first field first, so it stays
+        // in the panel (and Escape still closes it) instead of falling to the page.
+        layer.current?.querySelector<HTMLElement>('button, input')?.focus({ preventScroll: true });
+        onClear();
+      }}
+    >
       {t('filterBar.clear')}
     </Button>
   );
@@ -145,6 +155,11 @@ export function FilterButton({
           className="filter-bar__layer"
           role="dialog"
           aria-label={t('filterBar.filters')}
+          onBlur={(event) => {
+            // Tab past the panel closes it, as it closes a menu; the focus goes on.
+            const next = event.relatedTarget;
+            if (next instanceof Node && !event.currentTarget.contains(next)) setOpen(false);
+          }}
           onKeyDown={(event) => {
             if (event.key !== 'Escape') return;
             event.preventDefault();

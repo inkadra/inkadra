@@ -324,7 +324,7 @@ export function Projects() {
           }
         >
           <MenuChoices
-            title={t('film.list.sortBy')}
+            title={t('projectsPage.sort')}
             value={query.sort}
             options={['activity', 'name', 'created'].map((v) => ({
               value: v,

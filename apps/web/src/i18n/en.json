@@ -7226,6 +7226,7 @@
     "pdfHint": "to print",
     "showShots_one": "Show {{count}} shot",
     "showShots_other": "Show {{count}} shots",
+    "showQueue": "Show {{what}}",
     "showProjects_one": "Show {{count}} project",
     "showProjects_other": "Show {{count}} projects",
     "shownProjects_one": "{{shown}} of {{count}} project",

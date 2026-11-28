@@ -7226,6 +7226,7 @@
     "pdfHint": "para imprimir",
     "showShots_one": "Mostrar {{count}} plano",
     "showShots_other": "Mostrar {{count}} planos",
+    "showQueue": "Mostrar {{what}}",
     "showProjects_one": "Mostrar {{count}} projeto",
     "showProjects_other": "Mostrar {{count}} projetos",
     "shownProjects_one": "{{shown}} de {{count}} projeto",
