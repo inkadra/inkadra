@@ -157,8 +157,10 @@
   border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-float);
 }
+/* Isolated, so the badges stay inside their cell and scroll under the sticky table header. */
 .shots__pic-col {
   position: relative;
+  isolation: isolate;
 }
 
 /* Panel ---------------------------------------------------------------------- */
