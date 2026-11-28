@@ -522,7 +522,7 @@ export function QueueRail({
         onClick={() => onOpen('queue')}
       >
         <Icon name="list" />
-        {count !== null && (
+        {count !== null && count > 0 && (
           <span className="schedule__rail-count" aria-hidden="true">
             {count}
           </span>
@@ -766,9 +766,16 @@ export function BlockEditor({
           <label className="schedule__field">
             {t('schedule.title')}
             <Input
+              data-block-title
               maxLength={500}
               value={block.title}
               onChange={(e) => update({ title: e.target.value }, `title:${block.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && variant === 'popover') {
+                  e.preventDefault();
+                  onClose();
+                }
+              }}
             />
           </label>
         )}

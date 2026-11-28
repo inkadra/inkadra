@@ -25,7 +25,10 @@ export const noMailer: Mailer = {
 };
 
 /** `name@example.com` as `n…@example.com`, the way every mail log line shows an address. */
-export const maskAddress = (address: string) => address.replace(/^(.).*(@.*)$/, '$1…$2');
+export const maskAddress = (address: string) => {
+  const at = address.lastIndexOf('@');
+  return at > 0 ? `${address[0]}…${address.slice(at)}` : address;
+};
 
 /**
  * A delivery failure that is safe to log: the cause (`code`, `responseCode`, `command`) and the
