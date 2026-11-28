@@ -357,9 +357,20 @@ it('creates a 30-min block on single click, opens its quick editor focused on th
   expect(popover).not.toBeNull();
   const titleInput = popover?.querySelector<HTMLInputElement>('[data-block-title]');
   expect(document.activeElement).toBe(titleInput);
-  // Clicking empty time while the popover is open dismisses it without opening a new menu.
+  // Ctrl+Z while the newly focused title input is still empty undoes the creation and closes the popover.
+  await key(titleInput ?? window, { key: 'z', ctrlKey: true, metaKey: true });
+  expect(blocksOf(host)).toEqual([A]);
+  expect(host.querySelector('.schedule__popover')).toBeNull();
+  // Redo restores the block; clicking empty time dismisses a newly opened popover without opening a menu.
+  await key(window, { key: 'z', ctrlKey: true, metaKey: true, shiftKey: true });
+  expect(blocksOf(host)).toHaveLength(2);
   await act(async () => column.dispatchEvent(pointer('pointerdown', 720)));
   await act(async () => column.dispatchEvent(pointer('pointerup', 720)));
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  await key(document.activeElement ?? window, { key: '2' });
+  expect(host.querySelector('.schedule__popover')).not.toBeNull();
+  await act(async () => column.dispatchEvent(pointer('pointerdown', 780)));
+  await act(async () => column.dispatchEvent(pointer('pointerup', 780)));
   expect(host.querySelector('.schedule__popover')).toBeNull();
   expect(document.querySelector('[role="menu"]')).toBeNull();
 });

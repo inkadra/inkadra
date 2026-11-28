@@ -624,18 +624,26 @@ export function ScheduleView({
         ? { past: past.slice(0, -1), future: [...future, step] }
         : { past: [...past, step], future: future.slice(0, -1) },
     );
+    setPopover(null);
     setNotice(t(direction === 'undo' ? 'schedule.undone' : 'schedule.redone'));
   };
   const travelRef = useRef(travel);
   travelRef.current = travel;
   // Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y) outside text fields, which keep their own undo.
+  // An untouched (empty) input inside the quick block popover still lets Ctrl+Z undo creation.
   useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       const mod = isMac() ? event.metaKey : event.ctrlKey;
-      if (!mod || event.altKey || isTyping(event.target)) return;
-      // A dialog, or a menu the key was pressed in (New block), keeps ⌘Z from the schedule.
-      if (document.querySelector('dialog[open]') || insideDialog(event.target)) return;
+      if (!mod || event.altKey) return;
+      const target = event.target;
+      const inPopover = target instanceof Element && !!target.closest('.schedule__popover');
+      const emptyInput =
+        (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) &&
+        target.value === '';
+      if (isTyping(target) && !(inPopover && emptyInput)) return;
+      // A modal dialog, or a menu the key was pressed in (New block), keeps ⌘Z from the schedule.
+      if (document.querySelector('dialog[open]') || (insideDialog(target) && !inPopover)) return;
       const key = event.key.toLowerCase();
       if (key !== 'z' && key !== 'y') return;
       event.preventDefault();
