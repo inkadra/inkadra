@@ -486,11 +486,13 @@ the new layout later with a dump and restore.
    ```
 
 2. **Take the new `compose.yaml` and `deploy/` files** as in step 3 above, but leave
-   `POSTGRES_DATA` as it was. From 16, keep `deploy/compose.postgres-old-layout.yaml` in
-   `COMPOSE_FILE` and set the new version in `.env`:
+   `POSTGRES_DATA` as it was. From 16 (or from 18 in the old layout), keep
+   `deploy/compose.postgres-old-layout.yaml` in `COMPOSE_FILE` and set the new version in `.env`:
 
    ```sh
-   # .env, from 16 only: POSTGRES_MAJOR=19
+   # .env, old layout only:
+   COMPOSE_FILE=compose.yaml:deploy/compose.postgres-old-layout.yaml
+   POSTGRES_MAJOR=19
    ```
 
 3. **Upgrade the volume.** The password is not used, the database exists already; the image
@@ -532,7 +534,8 @@ docker compose -f compose.yaml -f deploy/compose.postgres18.yaml up -d
 ```
 
 PostgreSQL 18 stays supported, and CI keeps running the upgrade from it, for one more release.
-After that the file is removed: move to 19 before then. Installs on 16 keep
+After that the file is removed: move to 19 before then. Installs on 16 (or on 18 in the old
+layout) keep
 `deploy/compose.postgres-old-layout.yaml` as they have it (see
 [Staying on PostgreSQL 16](#staying-on-postgresql-16-for-now)).
 
@@ -560,7 +563,7 @@ of 18:
 docker compose exec -u node inkadra node /app/dist/main.js backup create
 docker compose down
 mkdir -p /srv/inkadra/postgres18-new && chown 70:70 /srv/inkadra/postgres18-new
-export POSTGRES_DATA=/srv/inkadra/postgres18-new      # instead of the line in .env
+# .env: replace the POSTGRES_DATA line with POSTGRES_DATA=/srv/inkadra/postgres18-new
 docker compose -f compose.yaml -f deploy/compose.postgres18.yaml up -d --wait postgres
 docker compose -f compose.yaml -f deploy/compose.postgres18.yaml run --rm inkadra backup restore /data/backups/inkadra-backup-<the newest>.zip
 docker compose -f compose.yaml -f deploy/compose.postgres18.yaml up -d
@@ -785,7 +788,7 @@ of 16:
 docker compose exec -u node inkadra node /app/dist/main.js backup create
 docker compose down
 mkdir -p /srv/inkadra/postgres16-new && chown 70:70 /srv/inkadra/postgres16-new
-export POSTGRES_DATA=/srv/inkadra/postgres16-new      # instead of the line in .env
+# .env: replace the POSTGRES_DATA line with POSTGRES_DATA=/srv/inkadra/postgres16-new
 docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d --wait postgres
 docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml run --rm inkadra backup restore /data/backups/inkadra-backup-<the newest>.zip
 docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d

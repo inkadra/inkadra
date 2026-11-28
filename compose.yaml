@@ -98,6 +98,7 @@ services:
     # A cluster of another major version on the volume must not be answered with an empty
     # database next to it: stop and say what to do. One of 16 or older has its PG_VERSION right
     # in the volume; one of 18 sits in 18/docker, beside the empty 19/docker this would create.
+    # Checked even when 19/docker exists: an interrupted pgautoupgrade leaves both behind.
     entrypoint:
       - sh
       - -c
@@ -107,14 +108,13 @@ services:
           echo "Move it to PostgreSQL $$PG_MAJOR first: docs/self-hosting/upgrades.md#upgrading-to-postgresql-19" >&2
           exit 1
         fi
-        if [ ! -f "$$PGDATA/PG_VERSION" ]; then
-          for other in /var/lib/postgresql/*/docker/PG_VERSION; do
-            [ -f "$$other" ] || continue
-            echo "The volume holds a PostgreSQL $$(cat "$$other") database, and this is PostgreSQL $$PG_MAJOR." >&2
-            echo "Move it to PostgreSQL $$PG_MAJOR first, or stay on $$(cat "$$other") for now: docs/self-hosting/upgrades.md#upgrading-to-postgresql-19" >&2
-            exit 1
-          done
-        fi
+        for other in /var/lib/postgresql/*/docker/PG_VERSION; do
+          [ -f "$$other" ] || continue
+          [ "$$other" = "$$PGDATA/PG_VERSION" ] && continue
+          echo "The volume holds a PostgreSQL $$(cat "$$other") database, and this is PostgreSQL $$PG_MAJOR." >&2
+          echo "Move it to PostgreSQL $$PG_MAJOR first, or stay on $$(cat "$$other") for now: docs/self-hosting/upgrades.md#upgrading-to-postgresql-19" >&2
+          exit 1
+        done
         exec docker-entrypoint.sh "$$@"
       - --
     # A custom entrypoint drops the image's default command. Memory settings stated, so they

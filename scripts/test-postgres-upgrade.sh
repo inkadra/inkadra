@@ -99,6 +99,7 @@ ready() {
     sleep 1
   done
   fail "no health answer within 90 s"
+  return 1
 }
 jar="$work/cookies"
 sign_up() { c -o /dev/null -w '%{http_code}' -c "$jar" --data "{\"name\":\"Upgrade Test\",\"email\":\"$email\",\"password\":\"$password\"}" "$url/api/auth/sign-up/email"; }
@@ -186,6 +187,18 @@ if [[ $mode == dump ]]; then
   else
     fail "wrong message on a PostgreSQL $from folder: $out"
   fi
+  # An interrupted pgautoupgrade leaves a 19/docker beside the 18 cluster: still a refusal.
+  if [[ $from == 18 ]]; then
+    mkdir -p "$work/old-layout/19/docker"
+    echo 19 >"$work/old-layout/19/docker/PG_VERSION"
+    if out=$(POSTGRES_DATA="$work/old-layout" new run --rm --no-deps postgres 2>&1); then
+      fail "PostgreSQL 19 started beside a PostgreSQL 18 cluster"
+    elif [[ $out == *"$refusal"* ]]; then
+      pass "PostgreSQL 19 refuses a folder with 18/docker beside 19/docker"
+    else
+      fail "wrong message with 18/docker beside 19/docker: $out"
+    fi
+  fi
 
   stack=new
   new up -d --quiet-pull --wait --wait-timeout 120 postgres
@@ -219,8 +232,7 @@ else
 fi
 
 now up -d --wait --wait-timeout 180
-ready
-pass "app starts on PostgreSQL 19"
+ready && pass "app starts on PostgreSQL 19"
 [[ $(migrations) -ge $migrations_before ]] && pass "all migrations applied ($migrations_before before, $(migrations) now)" ||
   fail "migrations: $migrations_before before, $(migrations) now"
 [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && pass "health ok" || fail "health"
