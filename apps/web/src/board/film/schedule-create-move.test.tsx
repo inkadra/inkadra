@@ -338,3 +338,80 @@ it.each(['error', 'unavailable'] as const)(
     expect(pressed()).toBe(localDate(new Date()));
   },
 );
+
+it('creates a 30-min block on single click, opens its quick editor focused on the title, and lets a click on empty space dismiss it', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [monday], nextCursor: null });
+  flatLayout();
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  const column = host.querySelector<HTMLElement>('.schedule__day');
+  if (!column) throw new Error('no day column');
+  // Single click at 10:00 (600 min) without dragging opens the 30-min new-block menu.
+  await act(async () => column.dispatchEvent(pointer('pointerdown', 600)));
+  await act(async () => column.dispatchEvent(pointer('pointerup', 600)));
+  const menu = document.querySelector('[role="menu"]');
+  expect(menu?.textContent).toContain('schedule.newBlock');
+  await key(document.activeElement ?? window, { key: '2' });
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  // Quick popover opens immediately with the title input focused.
+  const popover = host.querySelector('.schedule__popover');
+  expect(popover).not.toBeNull();
+  const titleInput = popover?.querySelector<HTMLInputElement>('[data-block-title]');
+  expect(document.activeElement).toBe(titleInput);
+  // Clicking empty time while the popover is open dismisses it without opening a new menu.
+  await act(async () => column.dispatchEvent(pointer('pointerdown', 720)));
+  await act(async () => column.dispatchEvent(pointer('pointerup', 720)));
+  expect(host.querySelector('.schedule__popover')).toBeNull();
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+});
+
+it('creates a shooting day when single-clicking a free column', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [monday], nextCursor: null });
+  flatLayout();
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  const free = host.querySelector<HTMLElement>('.schedule__column.is-free');
+  if (!free) throw new Error('no free column');
+  await act(async () => free.dispatchEvent(pointer('pointerdown', 540)));
+  await act(async () => free.dispatchEvent(pointer('pointerup', 540)));
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  await key(document.activeElement ?? window, { key: '2' });
+  expect(host.querySelectorAll('.schedule__day')).toHaveLength(2);
+});
+
+it('opens a right-click context menu on a block to fix/unfix time or duplicate', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [monday], nextCursor: null });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  const first = host.querySelector<HTMLElement>(`[data-block="${A}"]`);
+  if (!first) throw new Error('block not drawn');
+  await act(async () =>
+    first.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 40, clientY: 40 })),
+  );
+  const menu = document.querySelector('[role="menu"]');
+  expect(menu?.textContent).toContain('schedule.fixTime');
+  await act(async () =>
+    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((el) => el.textContent?.includes('schedule.fixTime'))
+      ?.click(),
+  );
+  expect(host.querySelector(`[data-block="${A}"]`)?.getAttribute('aria-label')).toContain(
+    'schedule.fixed',
+  );
+});
+
+it('navigates views and dates with Google Calendar shortcuts (D, W, J, K, T) and hides zero rail badge', async () => {
+  localStorage.setItem('inkadra.schedule.side', 'closed');
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [monday], nextCursor: null });
+  const host = await mount(<ScheduleView store={store()} boardId="board" />);
+  // Zero waiting items: rail hides the badge.
+  expect(host.querySelector('.schedule__rail-count')).toBeNull();
+  expect(host.querySelector('.schedule--week')).not.toBeNull();
+  await key(document.body, { key: 'd' });
+  expect(host.querySelector('.schedule--day')).not.toBeNull();
+  await key(document.body, { key: 'j' });
+  expect(heads(host)).toEqual(['2026-11-03']);
+  await key(document.body, { key: 'k' });
+  expect(heads(host)).toEqual(['2026-11-02']);
+  await key(document.body, { key: 'w' });
+  expect(host.querySelector('.schedule--week')).not.toBeNull();
+  await key(document.body, { key: 't' });
+  expect(heads(host)).toContain(localDate(new Date()));
+});

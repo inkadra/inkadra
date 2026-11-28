@@ -282,9 +282,12 @@ export function ScheduleView({
   // The day whose "N conflicts" note is open.
   const [hotDay, setHotDay] = useState<string | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
-  const [popover, setPopover] = useState<{ day: string; block: string; rect: DOMRect } | null>(
-    null,
-  );
+  const [popover, setPopover] = useState<{
+    day: string;
+    block: string;
+    rect: DOMRect;
+    focusTitle?: boolean;
+  } | null>(null);
   const [sheet, setSheet] = useState<'queue' | 'day' | 'block' | null>(null);
   useEffect(() => {
     if (active) return;
@@ -936,6 +939,7 @@ export function ScheduleView({
       { day, next },
     ]);
     setSelection({ day: day.id, block: block.id });
+    return day.id;
   };
   /** A block drawn on empty time (phase 2), of the type picked in the menu. */
   const createBlock = (
@@ -944,6 +948,7 @@ export function ScheduleView({
     start: number,
     end: number,
     type: ScheduleBlock['type'],
+    anchorRect?: DOMRect,
   ): string | null => {
     if (disabled) return null;
     if (entry?.stale) {
@@ -951,10 +956,17 @@ export function ScheduleView({
       return null;
     }
     const block = { ...newScheduleBlock(type), duration: end - start };
+    let targetDayId: string;
     if (entry) {
       commit([{ day: entry.day, next: insertDrawnBlock(entry.draft, block, start) }]);
       setSelection({ day: entry.day.id, block: block.id });
-    } else createDay(date, start, false, block, null);
+      targetDayId = entry.day.id;
+    } else targetDayId = createDay(date, start, false, block, null);
+    if (!phone) {
+      if (view === 'day') setTab('block');
+      else if (anchorRect)
+        setPopover({ day: targetDayId, block: block.id, rect: anchorRect, focusTitle: true });
+    }
     setNotice(
       t('schedule.created', {
         type: t(`schedule.types.${type}`),
@@ -1161,6 +1173,42 @@ export function ScheduleView({
     else setFocus(addDays(weekStart(focusDate), direction * 7));
     setPopover(null);
   };
+  // Google Calendar navigation shortcuts: T (today), D (day), W (week), K (prev), J (next).
+  const navRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  navRef.current = (event) => {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
+      return;
+    if (isTyping(event.target) || insideDialog(event.target)) return;
+    if (document.querySelector('dialog[open], [role="menu"], .schedule__popover')) return;
+    const key = event.key.toLowerCase();
+    if (key === 't') {
+      event.preventDefault();
+      if (!loading) {
+        setFocus(today);
+        setPopover(null);
+      }
+    } else if (key === 'd' && !phone) {
+      event.preventDefault();
+      setView('day');
+      setPopover(null);
+    } else if (key === 'w' && !phone) {
+      event.preventDefault();
+      setView('week');
+      setPopover(null);
+    } else if (key === 'k') {
+      event.preventDefault();
+      step(-1);
+    } else if (key === 'j') {
+      event.preventDefault();
+      step(1);
+    }
+  };
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (event: KeyboardEvent) => navRef.current(event);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active]);
   const rangeTitle = (() => {
     if (view === 'day')
       return dayLong(focusDate, {
@@ -1822,6 +1870,7 @@ export function ScheduleView({
       {popover && popoverEntry && popoverBlock && !phone && (
         <BlockPopover
           rect={popover.rect}
+          focusTitle={popover.focusTitle}
           onClose={() => setPopover(null)}
           label={t('schedule.block')}
         >
@@ -2022,6 +2071,7 @@ function BlockPopover({
   rect,
   label,
   below = false,
+  focusTitle = false,
   onClose,
   children,
 }: {
@@ -2029,6 +2079,8 @@ function BlockPopover({
   label: string;
   /** Under its anchor (the period's title) rather than beside it (a block). */
   below?: boolean;
+  /** Focus the block's title input right away after creation. */
+  focusTitle?: boolean | undefined;
   onClose: () => void;
   children: React.ReactNode;
 }) {
@@ -2052,8 +2104,12 @@ function BlockPopover({
     const left = right ? rect.right + gap : Math.max(8, rect.left - gap - width);
     const top = Math.min(Math.max(8, rect.top), window.innerHeight - height - 8);
     setPlace({ left, top: Math.max(8, top) });
-    el.querySelector<HTMLElement>('button, input, [tabindex]')?.focus();
-  }, [rect, below]);
+    const target = focusTitle
+      ? (el.querySelector<HTMLElement>('[data-block-title]') ??
+        el.querySelector<HTMLElement>('button, input, [tabindex]'))
+      : el.querySelector<HTMLElement>('button, input, [tabindex]');
+    target?.focus();
+  }, [rect, below, focusTitle]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !document.querySelector('dialog[open]')) onClose();
