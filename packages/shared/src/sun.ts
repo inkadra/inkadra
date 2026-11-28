@@ -107,7 +107,11 @@ export function sunTimes(
  */
 export function locationCoords(text: string): { lat: number; lng: number } | null {
   for (const word of text.split(/\s+/)) {
-    const token = word.replace(/^[<(]+|[>),.;]+$/g, '');
+    let start = 0;
+    let end = word.length;
+    while (start < end && '<('.includes(word.charAt(start))) start += 1;
+    while (end > start && '>),.;'.includes(word.charAt(end - 1))) end -= 1;
+    const token = word.slice(start, end);
     if (!token) continue;
     const found =
       parseMapLink(token) ?? (/^https?:/i.test(token) ? null : parseMapLink(`https://${token}`));

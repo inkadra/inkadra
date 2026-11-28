@@ -66,7 +66,7 @@ export function stepTime(
  * Null when it is not one.
  */
 export function parseTime(text: string): TimeParts | null {
-  const match = /^\s*(\d{1,2})(?:[:.h]?(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?\s*$/i.exec(text);
+  const match = /^(\d{1,2})(?:[:.h]?(\d{2}))?(?:\s*([ap])\.?(?:\s*m)?\.?)?$/i.exec(text.trim());
   if (!match) return null;
   let h = Number(match[1]);
   const m = match[2] === undefined ? 0 : Number(match[2]);

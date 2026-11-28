@@ -27,7 +27,8 @@ const card = <T extends Element['type']>(cards: CardsById, id: string | undefine
  */
 export function lensMillimetres(lens: string | undefined): number | null {
   const text = lens ?? '';
-  if (/\d\s*[-–—/]\s*\d/.test(text.replace(/\b[ft]\s*\/?\s*\d+(?:[.,]\d+)?/gi, ''))) return null;
+  if (/\d\s*[-–—/]\s*\d/.test(text.replace(/\b[ft]\s*(?:\/\s*)?\d+(?:[.,]\d+)?/gi, '')))
+    return null;
   const numbers = [...text.matchAll(/(?<![\w.,/])(\d+(?:[.,]\d+)?)(?:\s*mm)?(?![\w.,])/gi)].map(
     (m) => Number((m[1] as string).replace(',', '.')),
   );
