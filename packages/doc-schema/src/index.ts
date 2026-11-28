@@ -7,5 +7,6 @@ export * from './note-body.ts';
 export * from './notices.ts';
 export * from './plan-lists.ts';
 export * from './presence.ts';
+export * from './restore-cards.ts';
 export * from './strict.ts';
 export * from './validated-snapshot.ts';

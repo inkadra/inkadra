@@ -27,6 +27,7 @@ import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import { trackGuestHiding } from './board-content.ts';
 import { noteWriter, type PendingWriters, storeWriters } from './board-writers.ts';
+import { createCardRestore } from './card-restore.ts';
 import { fenceCollabWrite, StaleCollabEpochError } from './collab-epoch.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
@@ -803,6 +804,31 @@ export function createCollabServer(deps: {
     writers.set(document, pending);
     return pending;
   };
+  /** Conditional restores (decision 0142), with the checks a client's update gets here. */
+  const restorer = createCardRestore({
+    db,
+    log,
+    instance: new URL(deps.publicUrl).origin,
+    writersOf,
+    refusal(connection, document) {
+      const ctx = connection.context as Context;
+      // Handing the boards over (F-24): the client asks the next process.
+      if (superseded || closing) return 'busy';
+      if (
+        !ctx.canEdit ||
+        frozen.has(document) ||
+        ctx.supportedSchemaVersion < requiredSchema(ctx, document)
+      )
+        return refusal(ctx, document).reason;
+      return hasRoom(document) ? null : 'full';
+    },
+    admit(document, update) {
+      if (malformedUpdate(document, update)) return 'invalid';
+      if (limits && !limits.freeze && !admitBoardUpdate(document, update, limits, grown))
+        return 'full';
+      return null;
+    },
+  });
   let timer: NodeJS.Timeout | undefined;
   let keepalive: NodeJS.Timeout | undefined;
   /**
@@ -1415,6 +1441,16 @@ export function createCollabServer(deps: {
       if (context.actor)
         for (const [client, clock] of newItems(document, payload))
           noteWriter(writersOf(document), client, context.actor.id, clock);
+    },
+
+    async onStateless({ connection, document, payload }) {
+      // Hocuspocus does not wait for this hook: nothing may reject from here, or the process
+      // would see an unhandled rejection.
+      try {
+        await restorer.handle(connection, document, payload);
+      } catch (err) {
+        log.error({ err }, 'stateless message not handled');
+      }
     },
 
     async onChange(payload) {

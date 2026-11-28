@@ -300,6 +300,13 @@ export const BoardCounts = z.object({ items: z.array(BoardCount) }).openapi('Boa
 });
 export type BoardCounts = z.infer<typeof BoardCounts>;
 
+/**
+ * Capability: the collaboration server answers a `restoreCards` stateless message on a board's
+ * connection, putting cards back only if none of them is on the board (decision 0142; messages
+ * in `@inkadra/doc-schema`, `restoreElements` in `@inkadra/canvas-core`).
+ */
+export const CONDITIONAL_RESTORE_CAPABILITY = 'conditional-restore';
+
 /** Capability: `GET /projects/{projectId}/schedule-sources` exists (#826). */
 export const SCHEDULE_SOURCES_CAPABILITY = 'schedule-sources';
 /** Storyboards a schedule asks for at once; more are asked for in several requests. */

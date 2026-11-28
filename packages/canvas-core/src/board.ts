@@ -7,6 +7,7 @@ import {
   checkElement,
   compareZ,
   Element,
+  ElementId,
   type ElementType,
   getSchemaVersion,
   hasStoredShape,
@@ -1001,6 +1002,116 @@ export function pasteElements(
     }
   }, opts.origin);
   return { ids: out, skipped };
+}
+
+/** A restore refused as a whole: nothing was written. */
+export class RestoreRefusedError extends Error {
+  constructor(
+    /**
+     * `present`: a card of the copy is on the board (`present` names them); `newer`: content of
+     * a newer schema; `invalid`: a malformed copy, or a card in it that does not validate.
+     */
+    readonly reason: 'present' | 'newer' | 'invalid',
+    readonly present: string[] = [],
+  ) {
+    super(
+      reason === 'present'
+        ? 'A card of the copy is already on the board.'
+        : reason === 'newer'
+          ? 'The copy holds content of a newer schema.'
+          : 'Malformed copy.',
+    );
+  }
+}
+
+/**
+ * The cards of the copy that are not inside another card of it, those put on the canvas because
+ * their column or scene is not on the board, and every card written, each under its own id.
+ */
+export interface RestoreResult {
+  ids: string[];
+  outside: string[];
+  own: string[];
+}
+
+/** Space between cards put side by side on the canvas. */
+const RESTORE_GAP = 24;
+
+/**
+ * Puts copied cards back under their own ids, as they were copied (`copyElements`), all or
+ * nothing: only if none of them is on the board (a card deleted since counts as absent), every
+ * card read and checked as a paste reads it, in one transaction tagged with `origin`. A card whose
+ * column or scene is neither in the copy nor on the board goes on the canvas, side by side from
+ * `at`, on top of everything; every other field stays as copied. Throws RestoreRefusedError.
+ * `instance` names the server of the board, as for `pasteElements`.
+ */
+export function restoreElements(
+  doc: Y.Doc,
+  data: ClipboardData,
+  at: Point,
+  opts: { origin?: unknown; instance?: string } = {},
+): RestoreResult {
+  let read: ReturnType<typeof readClipboard>;
+  try {
+    read = readClipboard(doc, data, opts.instance);
+  } catch (err) {
+    if (err instanceof PasteRefusedError) throw new RestoreRefusedError(err.reason);
+    throw err;
+  }
+  const { clips, skipped } = read;
+  // A paste leaves out a card that does not validate; a restore would lose it.
+  if (skipped > 0 || clips.length === 0) throw new RestoreRefusedError('invalid');
+  for (const clip of clips)
+    if (
+      !ElementId.safeParse(clip.id).success ||
+      ('stored' in clip && clip.stored.get('id') !== clip.id)
+    )
+      throw new RestoreRefusedError('invalid');
+  const { elements } = roots(doc);
+  const present = clips.filter((c) => elements.has(c.id)).map((c) => c.id);
+  if (present.length) throw new RestoreRefusedError('present', present);
+  const copied = new Set(clips.map((c) => c.id));
+  const all = listElements(doc);
+  const containers = new Set(all.filter(isContainer).map((e) => e.id));
+  const stays = (parent: string | null) =>
+    parent === null || parent === UNSORTED || copied.has(parent) || containers.has(parent);
+  const outside = clips.filter((c) => !stays(c.parent));
+  const onCanvas = canvasElements(all);
+  const keys = keysAt(onCanvas, onCanvas.length, outside.length);
+  const placed = new Map<string, { x: number; y: number; z: string }>();
+  let x = Math.round(at.x);
+  outside.forEach((clip, i) => {
+    placed.set(clip.id, { x, y: Math.round(at.y), z: keys[i] as string });
+    const w = 'stored' in clip ? clip.stored.get('w') : clip.element.w;
+    x += (typeof w === 'number' && w > 0 ? Math.round(w) : MIN_WIDTH) + RESTORE_GAP;
+  });
+  doc.transact(() => {
+    for (const clip of clips) {
+      const moved = placed.get(clip.id);
+      if ('stored' in clip) {
+        const map = cloneMap(clip.stored);
+        elements.set(clip.id, map);
+        if (moved) {
+          map.set('parent', null);
+          map.set('x', moved.x);
+          map.set('y', moved.y);
+          map.set('z', moved.z);
+        }
+        preparePlanListsOf(map);
+        continue;
+      }
+      const map = addElement(
+        doc,
+        moved ? { ...clip.element, parent: null, ...moved } : clip.element,
+      );
+      if (clip.body) map.set('body', clip.body.clone());
+    }
+  }, opts.origin);
+  return {
+    ids: clips.filter((c) => !(c.parent && copied.has(c.parent))).map((c) => c.id),
+    outside: outside.map((c) => c.id),
+    own: clips.map((c) => c.id),
+  };
 }
 
 type Write =

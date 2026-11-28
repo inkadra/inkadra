@@ -16,5 +16,7 @@ board from being stored or opened, and keeps one person from writing under the s
 identity (decision [0139](docs/decisions/0139-collaborative-update-checks.md)). It does not
 otherwise check that an editor's updates are ones a normal client would produce: a crafted update
 from someone with edit rights can damage that board's content, or make what the server holds in
-memory differ from what it stores until the board is reloaded. People who cannot edit a board
+memory differ from what it stores until the board is reloaded. A conditional restore (decision
+[0142](docs/decisions/0142-conditional-card-restore.md)) writes only cards the editor could
+write themselves, with the same checks as their own edits. People who cannot edit a board
 (viewers, commenters, guests without an editing link) cannot write to it at all.

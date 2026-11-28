@@ -144,6 +144,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
         'crew-one-row-per-character',
         'diagnostic-proxy-trust',
         'element-data-move',
+        'conditional-restore',
       ],
     });
     const publicBody = (await app.inject('/api/v1/instance')).json();
