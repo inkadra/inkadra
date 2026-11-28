@@ -20,6 +20,7 @@ import {
   addDays,
   blockBox,
   blockDetail,
+  clockString,
   drawnRange,
   freeDayUnder,
   gapsBeforeFixed,
@@ -96,15 +97,27 @@ interface Draw {
   x: number;
   y: number;
   active: boolean;
+  /** A popover or menu was open on pointerdown: a plain click only dismisses it. */
+  wasOpen: boolean;
 }
-/** The type menu of a new block, after the drag or the N key. */
+/** The type menu of a new block, after a click, a drag or the N key. */
 interface Creating {
   column: string;
   start: number;
   end: number;
   left: number;
   top: number;
+  /** Where the new block sits on screen, so the quick editor can anchor next to it. */
+  anchor: { left: number; top: number; width: number; height: number };
   /** Where Escape puts the focus back. */
+  origin: HTMLElement | null;
+}
+/** A block's right-click context menu. */
+interface BlockMenu {
+  dayId: string;
+  blockId: string;
+  x: number;
+  y: number;
   origin: HTMLElement | null;
 }
 /** A whole day dragged by its heading (phase 3). */
@@ -205,6 +218,7 @@ export function ScheduleCalendar({
     start: number,
     end: number,
     type: ScheduleBlock['type'],
+    anchorRect?: DOMRect,
   ) => string | null;
   /** A whole day to another date; a day already there takes its date. */
   onMoveDay: (dayId: string, date: string) => void;
@@ -226,6 +240,7 @@ export function ScheduleCalendar({
   const [draw, setDraw] = useState<Draw | null>(null);
   const drawRef = useRef<Draw | null>(null);
   const [creating, setCreating] = useState<Creating | null>(null);
+  const [blockMenu, setBlockMenu] = useState<BlockMenu | null>(null);
   const [dayDrag, setDayDrag] = useState<DayDrag | null>(null);
   const dayDragRef = useRef<DayDrag | null>(null);
 
@@ -342,6 +357,7 @@ export function ScheduleCalendar({
     blockStart: number,
   ) => {
     if (readOnly || entry.stale || event.button !== 0) return;
+    setBlockMenu(null);
     const column = columnRefs.current.get(entry.day.id)?.getBoundingClientRect();
     if (!column) return;
     const touch = event.pointerType === 'touch';
@@ -472,8 +488,14 @@ export function ScheduleCalendar({
     if (drawing && event.pointerId === drawing.pointerId) {
       updateDraw(null);
       const column = columnRefs.current.get(drawing.column)?.getBoundingClientRect();
-      if (!drawing.active || !column) return;
-      const { start, end } = drawnRange(drawing.from, drawing.to);
+      if (!column) return;
+      if (!drawing.active && (drawing.wasOpen || suppressClick.current)) return;
+      const { start, end } = drawing.active
+        ? drawnRange(drawing.from, drawing.to)
+        : (() => {
+            const s = snap(Math.max(0, drawing.from));
+            return { start: s, end: s + 30 };
+          })();
       openCreating(
         drawing.column,
         start,
@@ -482,6 +504,7 @@ export function ScheduleCalendar({
           left: column.left + 12,
           top: column.top + start * scale,
           bottom: column.top + end * scale,
+          width: Math.max(40, column.width - 8),
         },
         null,
       );
@@ -608,8 +631,10 @@ export function ScheduleCalendar({
     if ((event.target as Element).closest('.schedule__block, button')) return;
     const top = event.currentTarget.getBoundingClientRect().top;
     const minute = (event.clientY - top) / scale;
+    const wasOpen = !!document.querySelector('.schedule__popover, [role="menu"]');
     event.preventDefault();
     setCreating(null);
+    setBlockMenu(null);
     updateDraw({
       pointerId: event.pointerId,
       column: columnKey(column),
@@ -618,6 +643,7 @@ export function ScheduleCalendar({
       x: event.clientX,
       y: event.clientY,
       active: false,
+      wasOpen,
     });
   };
   /** The type menu under the new block, or above it near the bottom of the window. */
@@ -625,7 +651,7 @@ export function ScheduleCalendar({
     column: string,
     start: number,
     end: number,
-    rect: { left: number; top: number; bottom: number },
+    rect: { left: number; top: number; bottom: number; width?: number },
     origin: HTMLElement | null,
   ) => {
     // The phone's list adds blocks with its "+ Block" button.
@@ -636,15 +662,27 @@ export function ScheduleCalendar({
         ? Math.max(8, rect.top - 6 - MENU_HEIGHT)
         : below;
     const left = Math.max(8, Math.min(rect.left, window.innerWidth - 218));
-    setCreating({ column, start, end, left, top, origin });
+    const anchor = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width ?? 180,
+      height: Math.max(30, rect.bottom - rect.top),
+    };
+    setCreating({ column, start, end, left, top, anchor, origin });
   };
   const create = (type: ScheduleBlock['type']) => {
     const current = creating;
     setCreating(null);
     const column = current && columns.find((item) => columnKey(item) === current.column);
     if (!current || !column) return;
-    const id = onCreate(column.entry, column.date, current.start, current.end, type);
-    if (id) focusBlock(id);
+    const anchorRect = new DOMRect(
+      current.anchor.left,
+      current.anchor.top,
+      current.anchor.width,
+      current.anchor.height,
+    );
+    const id = onCreate(column.entry, column.date, current.start, current.end, type, anchorRect);
+    if (id && phone) focusBlock(id);
   };
   const createRef = useRef(create);
   createRef.current = create;
@@ -949,7 +987,9 @@ export function ScheduleCalendar({
                 duration: minutesLabel(slot.block.duration),
                 end: clockLabel(slot.end),
               })
-            : `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${after}`;
+            : moving?.fixed
+              ? `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${t('schedule.fixed')}`
+              : `${dateLabel(date, { weekday: 'short', day: 'numeric' })} · ${clockLabel(slot.start)} – ${clockLabel(slot.end)} · ${after} · ${t('schedule.altFixedHint')}`;
         return {
           id: slot.block.id,
           column: entry.day.id,
@@ -978,7 +1018,7 @@ export function ScheduleCalendar({
           id: block.id,
           column: moving.target,
           primary: true,
-          text: `${dateLabel(moving.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)}`,
+          text: `${dateLabel(moving.target, { weekday: 'short', day: 'numeric' })} · ${clockLabel(start)} – ${clockLabel(start + block.duration)} · ${moving.fixed ? t('schedule.fixed') : t('schedule.altFixedHint')}`,
           rect: {
             left: column.left + 4,
             top: column.top + start * scale,
@@ -1485,10 +1525,24 @@ export function ScheduleCalendar({
                         aria-keyshortcuts="Enter Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Shift+ArrowUp Shift+ArrowDown Delete N"
                         onPointerDown={(event) => begin(event, 'move', entry, block, start)}
                         onContextMenu={(event) => {
-                          if (dragRef.current?.touch) event.preventDefault();
+                          if (dragRef.current?.touch) {
+                            event.preventDefault();
+                            return;
+                          }
+                          if (phone || readOnly || entry.stale) return;
+                          event.preventDefault();
+                          setCreating(null);
+                          setBlockMenu({
+                            dayId: entry.day.id,
+                            blockId: block.id,
+                            x: event.clientX,
+                            y: event.clientY,
+                            origin: event.currentTarget,
+                          });
                         }}
                         onClick={(event) => {
                           if (suppressClick.current) return;
+                          setBlockMenu(null);
                           onOpenBlock(
                             entry.day.id,
                             block.id,
@@ -1624,7 +1678,8 @@ export function ScheduleCalendar({
                     <Icon name="chevronDown" size={12} />
                     {t('schedule.moreBelow', {
                       count: below.length,
-                      time: clockLabel(Math.max(...slots.map((s) => s.end))),
+                      from: clockLabel(Math.min(...below.map((s) => s.start))),
+                      time: clockLabel(Math.max(...below.map((s) => s.end))),
                     })}
                   </button>
                 )}
@@ -1705,6 +1760,76 @@ export function ScheduleCalendar({
           }}
         />
       )}
+      {blockMenu &&
+        (() => {
+          const entry = days.find((d) => d.day.id === blockMenu.dayId);
+          const slot = entry
+            ? scheduleTimes(entry.draft).find((s) => s.block.id === blockMenu.blockId)
+            : undefined;
+          if (!entry || !slot) return null;
+          const { block } = slot;
+          const pinned = block.start !== null;
+          return (
+            <ContextMenu
+              x={blockMenu.x}
+              y={blockMenu.y}
+              label={blockTitle(block)}
+              items={[
+                {
+                  label: t('schedule.editBlock'),
+                  shortcut: '↵',
+                  action: () => {
+                    const origin = blockMenu.origin;
+                    setBlockMenu(null);
+                    onOpenBlock(entry.day.id, block.id, origin?.getBoundingClientRect() ?? null);
+                  },
+                },
+                {
+                  label: t(pinned ? 'schedule.unfixTime' : 'schedule.fixTime'),
+                  action: () => {
+                    setBlockMenu(null);
+                    onChange([
+                      {
+                        day: entry.day,
+                        next: {
+                          ...entry.draft,
+                          blocks: entry.draft.blocks.map((b) =>
+                            b.id === block.id
+                              ? { ...b, start: pinned ? null : clockString(slot.start) }
+                              : b,
+                          ),
+                        },
+                      },
+                    ]);
+                  },
+                },
+                {
+                  label: t('schedule.duplicate'),
+                  shortcut: `${isMac() ? '⌘' : 'Ctrl+'}D`,
+                  action: () => {
+                    setBlockMenu(null);
+                    onDuplicate(entry.day.id, block.id);
+                  },
+                },
+                { divider: true },
+                {
+                  label: t('schedule.removeBlock'),
+                  shortcut: '⌫',
+                  danger: true,
+                  action: () => {
+                    setBlockMenu(null);
+                    onRemove(entry.day.id, block.id);
+                  },
+                },
+              ]}
+              onClose={(reason) => {
+                if (reason === 'item') return;
+                setBlockMenu(null);
+                if (reason === 'escape') focusBack(blockMenu.origin, root.current);
+              }}
+            />
+          );
+        })()}
     </section>
   );
 }

@@ -3392,8 +3392,8 @@
     "loadErrorBody": "Check your connection. Unsaved changes in this tab are not lost.",
     "longer": "5 minutes longer",
     "shorter": "5 minutes shorter",
-    "moreBelow_one": "{{count}} block, until {{time}}",
-    "moreBelow_other": "{{count}} blocks, until {{time}}",
+    "moreBelow_one": "{{count}} block · {{from}} – {{time}}",
+    "moreBelow_other": "{{count}} blocks · {{from}} – {{time}}",
     "movedTo": "Block moved to {{day}}.",
     "moveShort": "Move to…",
     "moveTo": "Move to another day…",
@@ -3489,7 +3489,11 @@
     "queueCount": "To schedule: {{what}}",
     "densityLabel": "Density",
     "densityCompact": "Compact",
-    "densityComfy": "Comfortable"
+    "densityComfy": "Comfortable",
+    "altFixedHint": "Alt: fixed time",
+    "editBlock": "Edit",
+    "fixTime": "Fix start time",
+    "unfixTime": "Unfix start time"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -6967,11 +6971,11 @@
     "mbPerMinuteAbout": "about {{size}} MB/min",
     "about": "about",
     "rungs": {
-      "title": "Resolutions",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
+      "title": "Resolutions",
       "480Help": "For slow connections and phone data.",
       "720Help": "HD: the quality of cards on the board.",
       "1080Help": "Full HD, full screen.",
