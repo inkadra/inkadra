@@ -261,8 +261,8 @@ The image's command selects the role. Each role has its own health check.
 
 - **PostgreSQL 16 or newer**, with the `pg_trgm` extension available (it is in the standard
   `contrib` package and in the official images); a migration creates it as the database owner.
-  `compose.yaml` runs PostgreSQL 18; to move an install from 16, see
-  [Upgrades](upgrades.md#upgrading-to-postgresql-18).
+  `compose.yaml` runs PostgreSQL 19; to move an install from 16 or 18, see
+  [Upgrades](upgrades.md#upgrading-to-postgresql-19).
 - **Valkey 8 or newer, or Redis 7**, required in production by every role. `compose.yaml` runs
   Valkey 9. If you bring your own or a managed one, set `maxmemory-policy noeviction`: with an
   eviction policy it may drop the queues and the schedules of recurring jobs.
