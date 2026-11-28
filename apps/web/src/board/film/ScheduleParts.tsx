@@ -24,6 +24,7 @@ import {
 import type { TFunction } from 'i18next';
 import { Fragment, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FilterButton, FilterField, MenuButton, MenuChoices } from '../../lib/filter-bar.tsx';
 import { SetupChips } from '../plan/SetupChips.tsx';
 import { ScenePlanButton } from '../plan/scenes.tsx';
 import { groupBySetup, type ShotSetup } from '../plan/setups.ts';
@@ -202,6 +203,8 @@ export function ScheduleQueue({
       whole: g.whole && !cast && (!words || sceneText(g).includes(words)),
     }))
     .filter((g) => g.frames.length || g.whole);
+  const shownShots = shown.reduce((sum, g) => sum + g.frames.length, 0);
+  const shownScenes = shown.filter((g) => g.whole).length;
   const queueShot = (g: SourceGroup) => (frame: FrameElement) => (
     <QueueShot
       key={frame.id}
@@ -262,82 +265,107 @@ export function ScheduleQueue({
         <p className="schedule__hint">{t('schedule.allScheduled')}</p>
       ) : (
         <>
-          <label className="schedule__search">
-            <Icon name="search" size={14} />
-            <Input
-              type="search"
-              placeholder={t('schedule.search')}
-              aria-label={t('schedule.search')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
           <div className="schedule__filters">
-            {sources && sources.length > 0 && (
-              <span className="schedule__filter" data-tour="schedule-storyboards">
+            <label className="schedule__search">
+              <Icon name="search" size={14} />
+              <Input
+                type="search"
+                placeholder={t('schedule.search')}
+                aria-label={t('schedule.search')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </label>
+            <FilterButton
+              count={[board, scene, cast].filter(Boolean).length}
+              summary={queueSummary(t, shownShots, shownScenes)}
+              showLabel={t('filterBar.showShots', { count: shownShots })}
+              onClear={() => {
+                setBoard('');
+                setScene('');
+                setCast('');
+              }}
+              // The tour's storyboard step: the Storyboard filter is in this panel.
+              data-tour={sources?.length ? 'schedule-storyboards' : undefined}
+            >
+              {sources && sources.length > 0 && (
+                <FilterField label={t('schedule.storyboardFilterLabel')} set={!!board}>
+                  <Select
+                    aria-label={t('schedule.filterStoryboard')}
+                    value={board}
+                    onChange={(value) => {
+                      setBoard(value);
+                      setScene('');
+                    }}
+                    options={[
+                      { value: '', label: t('schedule.allStoryboards') },
+                      ...sources.map((s) => ({
+                        value: s.boardId,
+                        label: s.title,
+                        icon: dotIcon(s),
+                      })),
+                    ]}
+                  />
+                </FilterField>
+              )}
+              <FilterField label={t('schedule.sceneFilterLabel')} set={!!scene}>
                 <Select
-                  variant="quiet"
-                  aria-label={t('schedule.filterStoryboard')}
-                  value={board}
-                  onChange={(value) => {
-                    setBoard(value);
-                    setScene('');
-                  }}
+                  aria-label={t('schedule.filterScene')}
+                  value={scene}
+                  onChange={setScene}
                   options={[
-                    { value: '', label: t('schedule.storyboardFilterLabel') },
-                    ...sources.map((s) => ({ value: s.boardId, label: s.title, icon: dotIcon(s) })),
+                    { value: '', label: t('film.list.allScenes') },
+                    ...waiting
+                      .filter((g) => !board || g.boardId === board)
+                      .map((g) => ({
+                        value: groupKey(g),
+                        // Prefixed by its storyboard on the Production board.
+                        label: across
+                          ? `${sourceOf(g.boardId)?.title ?? ''} · ${sceneName(g)}`
+                          : sceneName(g),
+                      })),
                   ]}
                 />
-              </span>
-            )}
-            <Select
-              variant="quiet"
-              aria-label={t('schedule.filterScene')}
-              value={scene}
-              onChange={setScene}
-              options={[
-                { value: '', label: t('schedule.sceneFilterLabel') },
-                ...waiting
-                  .filter((g) => !board || g.boardId === board)
-                  .map((g) => ({
-                    value: groupKey(g),
-                    // Prefixed by its storyboard on the Production board.
-                    label: across
-                      ? `${sourceOf(g.boardId)?.title ?? ''} · ${sceneName(g)}`
-                      : sceneName(g),
-                  })),
-              ]}
-            />
+              </FilterField>
+              {castNames.length > 0 && (
+                <FilterField label={t('schedule.castFilterLabel')} set={!!cast}>
+                  <Select
+                    aria-label={t('schedule.filterCast')}
+                    value={cast}
+                    onChange={setCast}
+                    options={[
+                      { value: '', label: t('film.list.allCast') },
+                      ...castNames.map((name) => ({
+                        value: name.toLocaleLowerCase(),
+                        label: name,
+                      })),
+                    ]}
+                  />
+                </FilterField>
+              )}
+            </FilterButton>
             {!!setups?.size && onBySetup && (
-              <Select
-                variant="quiet"
+              <MenuButton
+                icon="sort"
                 className="schedule__group-by"
-                aria-label={t('film.list.groupBy')}
-                value={bySetup ? 'setup' : 'scene'}
-                onChange={(value) => onBySetup(value === 'setup')}
-                options={[
-                  {
-                    value: 'scene',
-                    label: `${t('film.list.groupBy')}: ${t('film.list.groupScene')}`,
-                  },
-                  {
-                    value: 'setup',
-                    label: `${t('film.list.groupBy')}: ${t('film.list.groupSetup')}`,
-                  },
-                ]}
-              />
-            )}
-            {castNames.length > 0 && (
-              <Select
-                variant="quiet"
-                aria-label={t('schedule.filterCast')}
-                value={cast}
-                onChange={setCast}
-                options={[
-                  { value: '', label: t('schedule.castFilterLabel') },
-                  ...castNames.map((name) => ({ value: name.toLocaleLowerCase(), label: name })),
-                ]}
-              />
+                menuLabel={t('film.list.groupBy')}
+                label={
+                  <>
+                    <span>{t('film.list.groupBy')}:</span>{' '}
+                    {t(bySetup ? 'film.list.groupSetup' : 'film.list.groupScene')}
+                  </>
+                }
+              >
+                <MenuChoices
+                  title={t('film.list.groupBy')}
+                  value={bySetup ? 'setup' : 'scene'}
+                  options={[
+                    { value: 'scene', label: t('film.list.groupScene') },
+                    { value: 'setup', label: t('film.list.groupSetup') },
+                  ]}
+                  onChange={(value) => onBySetup(value === 'setup')}
+                />
+              </MenuButton>
             )}
           </div>
           <p className="schedule__hint">

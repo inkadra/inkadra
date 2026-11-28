@@ -3489,7 +3489,8 @@
     "queueCount": "To schedule: {{what}}",
     "densityLabel": "Density",
     "densityCompact": "Compact",
-    "densityComfy": "Comfortable"
+    "densityComfy": "Comfortable",
+    "allStoryboards": "All storyboards"
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -5621,7 +5622,7 @@
           },
           "1": {
             "title": "Storyboards and bars",
-            "text": "The Storyboard filter shows the frames of one storyboard only; the colored bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A gray bar: the storyboard is not available, the label stays."
+            "text": "Under Filters, the Storyboard filter shows the frames of one storyboard only; the colored bar on the left of each block tells which storyboard it comes from. “Plan the whole scene” puts a scene in one block, even before it is drawn. A gray bar: the storyboard is not available, the label stays."
           },
           "2": {
             "title": "Move and stretch",
@@ -7212,5 +7213,22 @@
     "lateLost_one": "Part of it could not follow: check that scene.",
     "lateLost_other": "Parts of them could not follow: check those {{count}} scenes.",
     "empty": "“{{title}}” is now empty: you can delete it."
+  },
+  "filterBar": {
+    "filters": "Filters",
+    "filtersActive_one": "Filters, {{count}} on",
+    "filtersActive_other": "Filters, {{count}} on",
+    "clear": "Clear filters",
+    "view": "View",
+    "viewName": "View: group by {{group}}, {{sort}}",
+    "export": "Export",
+    "csvHint": "spreadsheet",
+    "pdfHint": "to print",
+    "showShots_one": "Show {{count}} shot",
+    "showShots_other": "Show {{count}} shots",
+    "showProjects_one": "Show {{count}} project",
+    "showProjects_other": "Show {{count}} projects",
+    "shownProjects_one": "{{shown}} of {{count}} project",
+    "shownProjects_other": "{{shown}} of {{count}} projects"
   }
 }

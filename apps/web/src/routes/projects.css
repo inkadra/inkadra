@@ -60,11 +60,6 @@
   align-items: center;
   margin: 20px 0 16px;
 }
-.projects-page__filters .ink-select {
-  width: auto;
-  height: 32px;
-  max-width: 260px;
-}
 .projects-page__search {
   position: relative;
   display: flex;
@@ -82,12 +77,13 @@
   height: 32px;
   padding-left: 32px;
 }
-.projects-page__sort {
-  margin-left: auto;
+.projects-page__filters > .ink-btn {
+  height: 32px;
 }
 /* Grid or list: two icons in one segmented control. */
 .projects-page__view {
   display: flex;
+  margin-left: auto;
   gap: 2px;
   padding: 2px;
   border-radius: var(--ink-radius-sm);
@@ -175,12 +171,10 @@
   .projects-page__search {
     width: 100%;
   }
-  .projects-page__filters .ink-select {
-    flex: 1 1 140px;
-    max-width: none;
-  }
-  .projects-page__sort {
-    margin-left: 0;
+  .projects-page__filters > .projects-page__sort {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 44px;
   }
   .projects-page__view .ink-iconbtn {
     width: 44px;

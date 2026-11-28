@@ -733,8 +733,8 @@ html[data-view-direction]::view-transition-new(board-view) {
 
 /* Shot list --------------------------------------------------------------------------- */
 
-/* The toolbar wraps onto a second row when its controls do not fit: the filters keep their
-   labels and the export buttons stay on screen whatever the sidebar and side panels take. */
+/* The toolbar wraps onto a second row when its controls do not fit: Filters, View and Export
+   keep their labels and stay on screen whatever the sidebar and side panels take. */
 .shots > .story__bar {
   gap: 8px;
 }
@@ -743,23 +743,18 @@ html[data-view-direction]::view-transition-new(board-view) {
 .shots > .story__bar > .view-options__inline > .ink-btn {
   flex: none;
 }
-.shots > .story__bar > .ink-select.ink-input,
-.shots > .story__bar > .view-options__inline > .ink-select.ink-input {
-  flex: 0 1 auto;
-  min-width: 96px;
-  max-width: 240px;
-  text-overflow: ellipsis;
-}
 .shots > .story__bar > .ink-header__spacer {
   flex: 1 1 0;
 }
 .shots > .story__bar > .view-tabs {
   margin-left: 0;
 }
+/* The search gives up width before Add shot wraps to a second row. */
 .shots > .story__bar > .shots__filter {
-  flex: 0 1 200px;
-  width: 200px;
+  flex: 1 1 120px;
+  width: 120px;
   min-width: 120px;
+  max-width: 280px;
 }
 .shots__scroll {
   flex: 1;
@@ -1409,6 +1404,10 @@ html[data-view-direction]::view-transition-new(board-view) {
 
 /* Shot list enhancements (#105) ------------------------------------------------- */
 
+.shots > .shots__chips {
+  padding: 6px 20px;
+  border-bottom: 1px solid var(--ink-border-subtle);
+}
 .shots__chips {
   display: flex;
   align-items: center;

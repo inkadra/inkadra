@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
+import { FilterButton, FilterField, MenuButton, MenuChoices } from '../lib/filter-bar.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
@@ -200,6 +201,7 @@ export function Projects() {
     usage !== null ? t('projectsPage.storage', { bytes: formatStorage(usage, i18n.language) }) : '';
   const change = (key: keyof typeof query, value: string) =>
     setQuery((q) => ({ ...q, [key]: value }));
+  const filterCount = [query.status, query.type, query.person].filter((v) => v !== 'all').length;
   return (
     <div className="projects-page">
       <header className="projects-page__head">
@@ -258,58 +260,79 @@ export function Projects() {
             onChange={(e) => change('search', e.target.value)}
           />
         </label>
-        <Select
-          className="ink-input"
-          prefix={t('projectsPage.status')}
-          value={query.status}
-          onChange={(e) => change('status', e)}
+        <FilterButton
+          count={filterCount}
+          summary={t('filterBar.shownProjects', {
+            shown: visible.length,
+            count: items?.length ?? 0,
+          })}
+          showLabel={t('filterBar.showProjects', { count: visible.length })}
+          onClear={() => setQuery((q) => ({ ...q, status: 'all', type: 'all', person: 'all' }))}
         >
-          {['all', 'active', 'archived'].map((v) => (
-            <option key={v} value={v}>
-              {t(`projectsPage.${v}`)}
-            </option>
-          ))}
-        </Select>
-        <Select
-          className="ink-input"
-          prefix={t('onboarding.type')}
-          value={query.type}
-          onChange={(e) => change('type', e)}
+          <FilterField label={t('projectsPage.status')} set={query.status !== 'all'}>
+            <Select
+              aria-label={t('projectsPage.status')}
+              value={query.status}
+              onChange={(e) => change('status', e)}
+            >
+              {['all', 'active', 'archived'].map((v) => (
+                <option key={v} value={v}>
+                  {t(`projectsPage.${v}`)}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField label={t('onboarding.type')} set={query.type !== 'all'}>
+            <Select
+              aria-label={t('onboarding.type')}
+              value={query.type}
+              onChange={(e) => change('type', e)}
+            >
+              <option value="all">{t('projectsPage.all')}</option>
+              {catalogs.projectTypes.map(({ id: v }) => (
+                <option key={v} value={v}>
+                  {typeLabel(v)}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
+          {others && (
+            <FilterField label={t('projectsPage.people')} set={query.person !== 'all'}>
+              <Select
+                aria-label={t('projectsPage.people')}
+                value={query.person}
+                onChange={(e) => change('person', e)}
+              >
+                <option value="all">{t('projectsPage.all')}</option>
+                {[...people].map(([id, person]) => (
+                  <option key={id} value={id}>
+                    {person.name}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+          )}
+        </FilterButton>
+        <MenuButton
+          icon="sort"
+          className="projects-page__sort"
+          menuLabel={t('projectsPage.sort')}
+          label={
+            <>
+              <span>{t('projectsPage.sort')}:</span> {t(`projectsPage.sorts.${query.sort}`)}
+            </>
+          }
         >
-          <option value="all">{t('projectsPage.all')}</option>
-          {catalogs.projectTypes.map(({ id: v }) => (
-            <option key={v} value={v}>
-              {typeLabel(v)}
-            </option>
-          ))}
-        </Select>
-        {others && (
-          <Select
-            className="ink-input"
-            prefix={t('projectsPage.people')}
-            value={query.person}
-            onChange={(e) => change('person', e)}
-          >
-            <option value="all">{t('projectsPage.all')}</option>
-            {[...people].map(([id, person]) => (
-              <option key={id} value={id}>
-                {person.name}
-              </option>
-            ))}
-          </Select>
-        )}
-        <Select
-          className="ink-input projects-page__sort"
-          prefix={t('projectsPage.sort')}
-          value={query.sort}
-          onChange={(e) => change('sort', e)}
-        >
-          {['activity', 'name', 'created'].map((v) => (
-            <option key={v} value={v}>
-              {t(`projectsPage.sorts.${v}`)}
-            </option>
-          ))}
-        </Select>
+          <MenuChoices
+            title={t('film.list.sortBy')}
+            value={query.sort}
+            options={['activity', 'name', 'created'].map((v) => ({
+              value: v,
+              label: t(`projectsPage.sorts.${v}`),
+            }))}
+            onChange={(v) => change('sort', v)}
+          />
+        </MenuButton>
         <div className="projects-page__view">
           {(['grid', 'list'] as const).map((v) => (
             <IconButton

@@ -218,6 +218,8 @@ const paths = {
   bold: <path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" />,
   italic: <path d="M10 5h8M6 19h8M14 5l-4 14" />,
   list: <path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1" />,
+  filter: <path d="M3 5h18M6 12h12M10 19h4" />,
+  sort: <path d="M4 6h16M4 12h10M4 18h6" />,
   heading: <path d="M6 5v14M18 5v14M6 12h12" />,
   front: (
     <>

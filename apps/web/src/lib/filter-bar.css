@@ -1,0 +1,230 @@
+/* The toolbar of a filtered list: Filters, a menu button and the chips under the bar
+   (filter-bar.tsx). */
+
+.filter-bar__button,
+.filter-bar__menu-button {
+  flex: none;
+  gap: 6px;
+}
+.filter-bar__button.is-active {
+  border-color: transparent;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.filter-bar__button.is-active:hover:not(:disabled) {
+  background: var(--ink-accent-soft-bg);
+}
+.filter-bar__menu-button.is-open {
+  border-color: var(--ink-border-strong);
+  background: var(--ink-surface-2);
+}
+.filter-bar__menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.filter-bar__menu-label > span {
+  color: var(--ink-text-secondary);
+  font-weight: 400;
+}
+.filter-bar__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* The popover and the menus: in the top layer under their button (anchorLayer). */
+.filter-bar__layer {
+  position: fixed;
+  inset: auto;
+  left: var(--ink-layer-left);
+  top: var(--ink-layer-top, auto);
+  bottom: var(--ink-layer-bottom, auto);
+  width: min(460px, calc(100vw - 16px));
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  overflow: visible;
+}
+.filter-bar__layer--menu {
+  width: min(280px, calc(100vw - 16px));
+}
+.filter-bar__panel {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  padding: 14px;
+}
+.filter-bar__title {
+  margin: 0 0 12px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.filter-bar__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.filter-bar__fields--stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+.filter-bar__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.filter-bar__fields > .filter-bar__field > .ink-select.ink-input {
+  flex: none;
+  width: 100%;
+  max-width: none;
+  height: 36px;
+}
+.filter-bar__fields > .filter-bar__field.is-set > .ink-select.ink-input {
+  border-color: var(--ink-accent-primary);
+}
+.filter-bar__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.filter-bar__clear {
+  margin-left: -8px;
+  color: var(--ink-accent-primary);
+}
+.filter-bar__summary {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-bar__menu {
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  padding: 6px;
+}
+.filter-bar__group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.filter-bar__group + .filter-bar__group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ink-border-muted);
+}
+.filter-bar__group-title {
+  margin: 6px 8px 4px;
+  padding: 0;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.filter-bar__item {
+  gap: 8px;
+  min-height: 32px;
+  color: var(--ink-text-primary);
+  font-size: 13px;
+}
+.filter-bar__item > svg {
+  flex: none;
+  color: var(--ink-accent-primary);
+}
+.filter-bar__item[aria-checked="false"] > svg {
+  visibility: hidden;
+}
+.filter-bar__item[aria-checked="true"] {
+  background: var(--ink-surface-2);
+}
+.filter-bar__item.filter-bar__item--action > svg {
+  color: var(--ink-text-icon);
+}
+.filter-bar__hint {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+
+/* Under the bar while filters are on. */
+.filter-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.filter-bar__link {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-accent-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.filter-bar__link:hover {
+  text-decoration: underline;
+}
+.filter-bar__chips-count {
+  margin-left: auto;
+}
+
+@media (width < 768px) {
+  /* An icon with its badge on its corner; its name is the aria-label. */
+  .filter-bar__button {
+    position: relative;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .filter-bar__button-label {
+    display: none;
+  }
+  .filter-bar__button .filter-bar__badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+  }
+  .filter-bar__fields > .filter-bar__field > .ink-select.ink-input {
+    height: 44px;
+    font-size: 14px;
+  }
+  .filter-bar__item {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .filter-bar__chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-bar__chips > * {
+    flex: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-bar__layer .ink-popover,
+  .filter-bar__layer .ink-menu {
+    animation: none;
+  }
+}

@@ -3489,7 +3489,8 @@
     "queueCount": "Para planejar: {{what}}",
     "densityLabel": "Densidade",
     "densityCompact": "Compacto",
-    "densityComfy": "Confortável"
+    "densityComfy": "Confortável",
+    "allStoryboards": "Todos os storyboards"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -5621,7 +5622,7 @@
           },
           "1": {
             "title": "Storyboards e barras",
-            "text": "O filtro Storyboard mostra os planos de um só; a barra colorida à esquerda de cada bloco indica de qual storyboard vem. «Planejar a cena inteira» coloca uma cena em um bloco, mesmo antes de desenhá-la. Uma barra cinza: storyboard indisponível, o rótulo permanece."
+            "text": "Em Filtros, o filtro Storyboard mostra os planos de um só; a barra colorida à esquerda de cada bloco indica de qual storyboard vem. «Planejar a cena inteira» coloca uma cena em um bloco, mesmo antes de desenhá-la. Uma barra cinza: storyboard indisponível, o rótulo permanece."
           },
           "2": {
             "title": "Mova e estique",
@@ -7212,5 +7213,22 @@
     "lateLost_one": "Uma parte não pôde ir junto: confira essa cena.",
     "lateLost_other": "Algumas partes não puderam ir junto: confira essas {{count}} cenas.",
     "empty": "“{{title}}” agora está vazio: você pode excluí-lo."
+  },
+  "filterBar": {
+    "filters": "Filtros",
+    "filtersActive_one": "Filtros, {{count}} ativo",
+    "filtersActive_other": "Filtros, {{count}} ativos",
+    "clear": "Limpar filtros",
+    "view": "Vista",
+    "viewName": "Vista: agrupar por {{group}}, {{sort}}",
+    "export": "Exportar",
+    "csvHint": "folha de cálculo",
+    "pdfHint": "para imprimir",
+    "showShots_one": "Mostrar {{count}} plano",
+    "showShots_other": "Mostrar {{count}} planos",
+    "showProjects_one": "Mostrar {{count}} projeto",
+    "showProjects_other": "Mostrar {{count}} projetos",
+    "shownProjects_one": "{{shown}} de {{count}} projeto",
+    "shownProjects_other": "{{shown}} de {{count}} projetos"
   }
 }

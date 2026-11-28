@@ -31,6 +31,14 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import {
+  FilterButton,
+  FilterChips,
+  FilterField,
+  MenuAction,
+  MenuButton,
+  MenuChoices,
+} from '../../lib/filter-bar.tsx';
 import { useListMotion } from '../../lib/list-motion.ts';
 import { useIsPhone } from '../../lib/phone.ts';
 import { CardReview } from '../CardReview.tsx';
@@ -508,116 +516,171 @@ export function ShotList({
 
   const selectedSceneObj = scenes.find((s) => s.id === selectedScene);
 
-  // Filters, grouping, sorting and export sit in the bar; on a phone they fold into View options.
-  const filterControls = (
-    <>
-      <Select
-        className="ink-input"
-        value={selectedScene}
-        aria-label={t('film.list.groupScene')}
-        onChange={(e) => setSelectedScene(e)}
-      >
-        <option value="">{t('film.list.allScenes')}</option>
-        {scenes.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.number ? `${s.number}. ` : ''}
-            {s.title || slugline(s)}
-          </option>
-        ))}
-      </Select>
+  const filterCount = [status, selectedScene, selectedLocation, selectedCast].filter(
+    Boolean,
+  ).length;
+  const clearFilters = () => {
+    setStatus('');
+    setSelectedScene('');
+    setSelectedLocation('');
+    setSelectedCast('');
+  };
+  const shownSummary = t('film.list.shownShots', {
+    shown: allFilteredFrames.length,
+    count: frames.length,
+  });
 
-      {allLocations.length > 0 && (
+  // The filters sit behind Filters; grouping and sorting behind View, a sheet's Selects on a phone.
+  const filterFields = (
+    <>
+      <FilterField label={t('film.list.groupScene')} set={!!selectedScene}>
         <Select
-          className="ink-input"
-          value={selectedLocation}
-          aria-label={t('film.list.groupLocation')}
-          onChange={(e) => setSelectedLocation(e)}
+          value={selectedScene}
+          aria-label={t('film.list.groupScene')}
+          onChange={(e) => setSelectedScene(e)}
         >
-          <option value="">{t('film.list.allLocations')}</option>
-          {allLocations.map((l) => (
-            <option key={l} value={l}>
-              {l}
+          <option value="">{t('film.list.allScenes')}</option>
+          {scenes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.number ? `${s.number}. ` : ''}
+              {s.title || slugline(s)}
             </option>
           ))}
         </Select>
+      </FilterField>
+
+      {allLocations.length > 0 && (
+        <FilterField label={t('film.list.groupLocation')} set={!!selectedLocation}>
+          <Select
+            value={selectedLocation}
+            aria-label={t('film.list.groupLocation')}
+            onChange={(e) => setSelectedLocation(e)}
+          >
+            <option value="">{t('film.list.allLocations')}</option>
+            {allLocations.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
       )}
 
       {allCast.length > 0 && (
+        <FilterField label={t('film.frame.cast')} set={!!selectedCast}>
+          <Select
+            value={selectedCast}
+            aria-label={t('film.frame.cast')}
+            onChange={(e) => setSelectedCast(e)}
+          >
+            <option value="">{t('film.list.allCast')}</option>
+            {allCast.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      )}
+
+      <FilterField label={t('film.frame.status')} set={!!status}>
         <Select
-          className="ink-input"
-          value={selectedCast}
-          aria-label={t('film.frame.cast')}
-          onChange={(e) => setSelectedCast(e)}
+          value={status}
+          aria-label={t('film.frame.status')}
+          onChange={(e) => setStatus(e as ShotDisplayStatus | '')}
         >
-          <option value="">{t('film.list.allCast')}</option>
-          {allCast.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          <option value="">{t('film.list.allStatuses')}</option>
+          {SHOT_DISPLAY_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {t(`film.status.${s}`)}
             </option>
           ))}
         </Select>
+      </FilterField>
+    </>
+  );
+  const groupOptions = [
+    { value: 'scene', label: t('film.list.groupScene') },
+    { value: 'location', label: t('film.list.groupLocation') },
+    { value: 'status', label: t('film.list.groupStatus') },
+    { value: 'setup', label: t('film.list.groupSetup') },
+    { value: 'none', label: t('film.list.groupNone') },
+  ] as const satisfies readonly { value: ShotGroupBy; label: string }[];
+  const sortOptions = [
+    { value: 'manual', label: t('film.list.sortManual') },
+    { value: 'label', label: t('film.list.sortLabel') },
+  ] as const;
+  const groupLabel = groupOptions.find((o) => o.value === groupBy)?.label ?? '';
+  const sortLabel = sortOptions.find((o) => o.value === sortBy)?.label ?? '';
+  const viewMenu = (
+    <MenuButton
+      icon="sort"
+      menuLabel={t('filterBar.view')}
+      name={t('filterBar.viewName', { group: groupLabel, sort: sortLabel })}
+      label={
+        <>
+          <span>{t('filterBar.view')}:</span> {groupLabel} · {sortLabel}
+        </>
+      }
+    >
+      <MenuChoices
+        title={t('film.list.groupBy')}
+        value={groupBy}
+        options={groupOptions}
+        onChange={setGroupBy}
+      />
+      <MenuChoices
+        title={t('film.list.sortBy')}
+        value={sortBy}
+        options={sortOptions}
+        onChange={setSortBy}
+      />
+    </MenuButton>
+  );
+  const exportMenu = (
+    <MenuButton
+      icon="download"
+      variant="ghost"
+      data-tour="shotlist-bar"
+      menuLabel={t('filterBar.export')}
+      label={t('filterBar.export')}
+    >
+      <MenuAction
+        icon="table"
+        label="CSV"
+        hint={t('filterBar.csvHint')}
+        disabled={frames.length === 0}
+        onSelect={exportCsv}
+      />
+      {onExport && (
+        <MenuAction icon="file" label="PDF" hint={t('filterBar.pdfHint')} onSelect={onExport} />
       )}
-
-      <Select
-        className="ink-input"
-        value={status}
-        aria-label={t('film.frame.status')}
-        onChange={(e) => setStatus(e as ShotDisplayStatus | '')}
-      >
-        <option value="">{t('film.list.allStatuses')}</option>
-        {SHOT_DISPLAY_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {t(`film.status.${s}`)}
-          </option>
-        ))}
-      </Select>
-
+    </MenuButton>
+  );
+  // On a phone, View options holds the grouping, the sorting and the exports.
+  const phoneViewControls = (
+    <>
       <Select
         className="ink-input"
         value={groupBy}
         aria-label={t('film.list.groupBy')}
         onChange={(e) => setGroupBy(e as ShotGroupBy)}
-      >
-        <option value="scene">
-          {t('film.list.groupBy')}: {t('film.list.groupScene')}
-        </option>
-        <option value="location">
-          {t('film.list.groupBy')}: {t('film.list.groupLocation')}
-        </option>
-        <option value="status">
-          {t('film.list.groupBy')}: {t('film.list.groupStatus')}
-        </option>
-        <option value="setup">
-          {t('film.list.groupBy')}: {t('film.list.groupSetup')}
-        </option>
-        <option value="none">
-          {t('film.list.groupBy')}: {t('film.list.groupNone')}
-        </option>
-      </Select>
-
+        options={groupOptions.map((o) => ({
+          value: o.value,
+          label: `${t('film.list.groupBy')}: ${o.label}`,
+        }))}
+      />
       <Select
         className="ink-input"
         value={sortBy}
         aria-label={t('film.list.sortBy')}
         onChange={(e) => setSortBy(e as 'manual' | 'label')}
-      >
-        <option value="manual">
-          {t('film.list.sortBy')}: {t('film.list.sortManual')}
-        </option>
-        <option value="label">
-          {t('film.list.sortBy')}: {t('film.list.sortLabel')}
-        </option>
-      </Select>
-    </>
-  );
-  const exportButton = (
-    <>
-      <Button
-        icon="download"
-        data-tour="shotlist-bar"
-        disabled={frames.length === 0}
-        onClick={exportCsv}
-      >
+        options={sortOptions.map((o) => ({
+          value: o.value,
+          label: `${t('film.list.sortBy')}: ${o.label}`,
+        }))}
+      />
+      <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
         {t('film.list.export')}
       </Button>
       {onExport && (
@@ -831,14 +894,22 @@ export function ShotList({
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        <div className="view-options__inline">{filterControls}</div>
+        <FilterButton
+          count={filterCount}
+          summary={shownSummary}
+          showLabel={t('filterBar.showShots', { count: allFilteredFrames.length })}
+          onClear={clearFilters}
+        >
+          {filterFields}
+        </FilterButton>
+
+        <div className="view-options__inline">{viewMenu}</div>
 
         <span className="ink-header__spacer" />
 
-        <ViewOptions>
-          {filterControls}
-          {exportButton}
-        </ViewOptions>
+        <div className="view-options__inline">{exportMenu}</div>
+
+        <ViewOptions>{phoneViewControls}</ViewOptions>
 
         {!readOnly && (
           <Button
@@ -851,15 +922,10 @@ export function ShotList({
             <span className="film-compact-btn__label">{t('film.list.addShot')}</span>
           </Button>
         )}
-
-        <div className="view-options__inline">{exportButton}</div>
       </div>
 
       {hasActiveFilters && (
-        <div
-          className="shots__chips"
-          style={{ padding: '6px 20px', borderBottom: '1px solid var(--ink-border-subtle)' }}
-        >
+        <FilterChips className="shots__chips" summary={shownSummary} onClear={clearFilters}>
           {selectedScene && (
             <span className="shots__chip">
               {selectedSceneObj
@@ -914,7 +980,7 @@ export function ShotList({
               </button>
             </span>
           )}
-        </div>
+        </FilterChips>
       )}
 
       <div className="story__main">

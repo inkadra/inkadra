@@ -178,11 +178,19 @@ it('shows New project off, with why, to people who cannot create projects', asyn
 });
 
 it('offers the People filter only when someone else is on a project', async () => {
+  // The filters are in the Filters panel.
+  HTMLElement.prototype.showPopover ??= () => {};
+  HTMLElement.prototype.hidePopover ??= () => {};
+  const openFilters = () =>
+    act(async () => host.querySelector<HTMLButtonElement>('.filter-bar__button')?.click());
   await render([member('me', 'Giulia')]);
+  await openFilters();
+  expect(host.textContent).toContain('onboarding.type');
   expect(host.textContent).not.toContain('projectsPage.people');
   await act(async () => root.unmount());
   root = createRoot(host);
   await render([member('me', 'Giulia'), member('andrea', 'Andrea')]);
+  await openFilters();
   expect(host.textContent).toContain('projectsPage.people');
 });
 
