@@ -486,9 +486,12 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           ),
         };
         const name = (guest && input.guestName ? input.guestName : who.name)
-          .replace(/\S+@\S+/g, '[redacted]')
           .trim()
-          .split(/\s+/);
+          .split(/\s+/)
+          .map((part) => {
+            const at = part.indexOf('@');
+            return at > 0 && at < part.length - 1 ? '[redacted]' : part;
+          });
         const reporter = `${name[0] ?? 'Member'}${name[1] ? ` ${name[1][0]}.` : ''} (${who.role})`;
         const row = await db.transaction(async (tx) => {
           // One quota and idempotency decision across all API processes.
