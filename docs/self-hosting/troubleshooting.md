@@ -39,8 +39,8 @@ must belong to uid 1000. The `compose.yaml` of the current release fixes that at
 an older one, or a container started as uid 1000 directly, run the `chown` the error shows. For
 `POSTGRES_DATA` the owner is uid 70. See [Storage](storage.md#data-on-different-disks).
 
-**`postgres` refuses to start: "The volume holds a PostgreSQL 16 database".** It is an install from
-before PostgreSQL 18: see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
+**`postgres` refuses to start: "The volume holds a PostgreSQL 16 database" (or 18).** It is an
+install from before PostgreSQL 19: see [Upgrades](upgrades.md#upgrading-to-postgresql-19).
 
 **Videos and PDFs show a generic card.** The [standard image](README.md#the-image) includes media tools. Check that
 [media previews](configuration.md#media-previews) are enabled and inspect worker logs for conversion

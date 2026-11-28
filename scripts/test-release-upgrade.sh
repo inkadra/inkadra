@@ -58,7 +58,7 @@ cleanup() {
   # would restore into a database that is not empty.
   docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   # Folders made by containers belong to other users.
-  docker run --rm -v "$work:/w" --entrypoint sh postgres:18-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
+  docker run --rm -v "$work:/w" --entrypoint sh postgres:19-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -240,7 +240,7 @@ open_boards "After the upgrade"
 current stop inkadra
 
 # ---------------------------------------- 3. the backup of the release restored on this one
-echo "POSTGRES_DATA=postgres18-data" >>"$work/.env"
+echo "POSTGRES_DATA=postgres19-data" >>"$work/.env"
 compose up -d --wait --wait-timeout 120 postgres valkey
 if current run --rm inkadra backup restore "$backup_file" >"$work/restore.log" 2>&1; then
   report=$(grep -o '"migrationsBefore":[0-9]*,"migrationsAfter":[0-9]*' "$work/restore.log" | tail -n1)
@@ -255,7 +255,7 @@ current stop inkadra
 
 # ------------------------------------------------- 4. rollback: the release, its own backup
 mkdir "$work/pg-rollback"
-docker run --rm -v "$work/pg-rollback:/p" --entrypoint chown postgres:18-alpine 70:70 /p
+docker run --rm -v "$work/pg-rollback:/p" --entrypoint chown postgres:19-alpine 70:70 /p
 sed -i '/^POSTGRES_DATA=/d' "$work/.env"
 echo "POSTGRES_DATA=$work/pg-rollback" >>"$work/.env"
 compose up -d --wait --wait-timeout 120 postgres valkey

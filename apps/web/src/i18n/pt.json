@@ -3392,8 +3392,8 @@
     "loadErrorBody": "Verifique sua conexão. As alterações não salvas desta aba não se perdem.",
     "longer": "5 minutos a mais",
     "shorter": "5 minutos a menos",
-    "moreBelow_one": "{{count}} bloco, até {{time}}",
-    "moreBelow_other": "{{count}} blocos, até {{time}}",
+    "moreBelow_one": "{{count}} bloco · {{from}} – {{time}}",
+    "moreBelow_other": "{{count}} blocos · {{from}} – {{time}}",
     "movedTo": "Bloco movido para {{day}}.",
     "moveShort": "Mover para…",
     "moveTo": "Mover para outra diária…",
@@ -3490,7 +3490,11 @@
     "densityLabel": "Densidade",
     "densityCompact": "Compacto",
     "densityComfy": "Confortável",
-    "allStoryboards": "Todos os storyboards"
+    "allStoryboards": "Todos os storyboards",
+    "altFixedHint": "Alt: hora fixa",
+    "editBlock": "Editar",
+    "fixTime": "Fixar horário",
+    "unfixTime": "Remover horário fixo"
   },
   "moodboard": {
     "count_one": "{{count}} referência",
@@ -6968,11 +6972,11 @@
     "mbPerMinuteAbout": "cerca de {{size}} MB/min",
     "about": "cerca de",
     "rungs": {
-      "title": "Resoluções",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
+      "title": "Resoluções",
       "480Help": "Para conexões lentas e dados do celular.",
       "720Help": "HD: a qualidade dos cards no quadro.",
       "1080Help": "Full HD, em tela cheia.",

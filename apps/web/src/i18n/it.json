@@ -3392,8 +3392,8 @@
     "loadErrorBody": "Controlla la connessione. Le modifiche non salvate di questa scheda non vanno perse.",
     "longer": "5 minuti in più",
     "shorter": "5 minuti in meno",
-    "moreBelow_one": "{{count}} blocco, fino alle {{time}}",
-    "moreBelow_other": "{{count}} blocchi, fino alle {{time}}",
+    "moreBelow_one": "{{count}} blocco · {{from}} – {{time}}",
+    "moreBelow_other": "{{count}} blocchi · {{from}} – {{time}}",
     "movedTo": "Blocco spostato a {{day}}.",
     "moveShort": "Sposta a…",
     "moveTo": "Sposta a un altro giorno…",
@@ -3490,7 +3490,11 @@
     "densityLabel": "Densità",
     "densityCompact": "Compatto",
     "densityComfy": "Comodo",
-    "allStoryboards": "Tutti gli storyboard"
+    "allStoryboards": "Tutti gli storyboard",
+    "altFixedHint": "Alt: orario fisso",
+    "editBlock": "Modifica",
+    "fixTime": "Fissa orario",
+    "unfixTime": "Rimuovi orario fisso"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -6968,11 +6972,11 @@
     "mbPerMinuteAbout": "circa {{size}} MB/min",
     "about": "circa",
     "rungs": {
-      "title": "Risoluzioni",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
+      "title": "Risoluzioni",
       "480Help": "Per le connessioni lente e i dati del telefono.",
       "720Help": "HD: la qualità delle card sulla board.",
       "1080Help": "Full HD, a schermo intero.",

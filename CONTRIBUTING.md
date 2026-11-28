@@ -22,7 +22,7 @@ app. The rest of this page is the conventions every change follows, whoever writ
 ## Setup
 
 You need Node 26 or newer, pnpm 12 (`npm i -g pnpm@12.18.0`), PostgreSQL 16 or newer
-(`compose.yaml` runs 18) and Valkey or Redis.
+(`compose.yaml` runs 19) and Valkey or Redis.
 
 ```sh
 pnpm install

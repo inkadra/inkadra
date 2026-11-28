@@ -3392,8 +3392,8 @@
     "loadErrorBody": "Prüfe deine Verbindung. Nicht gespeicherte Änderungen in diesem Tab gehen nicht verloren.",
     "longer": "5 Minuten länger",
     "shorter": "5 Minuten kürzer",
-    "moreBelow_one": "{{count}} Block, bis {{time}}",
-    "moreBelow_other": "{{count}} Blöcke, bis {{time}}",
+    "moreBelow_one": "{{count}} Block · {{from}} – {{time}}",
+    "moreBelow_other": "{{count}} Blöcke · {{from}} – {{time}}",
     "movedTo": "Block verschoben auf {{day}}.",
     "moveShort": "Verschieben nach…",
     "moveTo": "An einen anderen Tag verschieben…",
@@ -3490,7 +3490,11 @@
     "densityLabel": "Dichte",
     "densityCompact": "Kompakt",
     "densityComfy": "Bequem",
-    "allStoryboards": "Alle Storyboards"
+    "allStoryboards": "Alle Storyboards",
+    "altFixedHint": "Alt: feste Zeit",
+    "editBlock": "Bearbeiten",
+    "fixTime": "Startzeit fixieren",
+    "unfixTime": "Feste Zeit aufheben"
   },
   "moodboard": {
     "count_one": "{{count}} Referenz",
@@ -6968,11 +6972,11 @@
     "mbPerMinuteAbout": "etwa {{size}} MB/min",
     "about": "etwa",
     "rungs": {
-      "title": "Auflösungen",
       "480": "480p",
       "720": "720p",
       "1080": "1080p",
       "2160": "2160p (4K)",
+      "title": "Auflösungen",
       "480Help": "Für langsame Verbindungen und mobile Daten.",
       "720Help": "HD: die Qualität der Karten auf dem Board.",
       "1080Help": "Full HD, im Vollbild.",
