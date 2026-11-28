@@ -9,6 +9,7 @@
 #   deploy/compose.nvidia.yaml         hardware video encoding on NVIDIA GPUs (included in the standard image)
 #   deploy/compose.office.yaml         Office document previews, a worker on the -office image (docs/self-hosting/office.md)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
+#   deploy/compose.postgres18.yaml     stay on PostgreSQL 18 for now (docs/self-hosting/upgrades.md)
 #   deploy/compose.postgres-old-layout.yaml   stay on PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
 #   deploy/compose.demo.yaml           a public demo behind a Cloudflare Tunnel (docs/demo.md)
 
@@ -81,30 +82,39 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:18-alpine@sha256:1018733457011bf88d81db98cf43aac6d5150afc18787dbe204771fedf80ff95
+    image: postgres:19-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
     restart: unless-stopped
     environment:
       POSTGRES_USER: inkadra
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: inkadra
     volumes:
-      # PostgreSQL 18 keeps its cluster in /var/lib/postgresql/18/docker, so the volume is the
-      # parent folder. An existing `postgres-data` from PostgreSQL 16 has its cluster at the
-      # top and is refused below until it is moved over
-      # (docs/self-hosting/upgrades.md#upgrading-to-postgresql-18).
+      # Since PostgreSQL 18 the image keeps its cluster in /var/lib/postgresql/<major>/docker
+      # (19/docker here), so the volume is the parent folder. A cluster of another version on
+      # it is refused below until it is moved over
+      # (docs/self-hosting/upgrades.md#upgrading-to-postgresql-19).
       # A host folder here must be owned by uid 70, the postgres user of the alpine image.
       - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql
-    # A cluster of PostgreSQL 16 or older mounted here (its PG_VERSION would sit right in the
-    # volume) must not be answered with an empty database next to it: stop and say what to do.
+    # A cluster of another major version on the volume must not be answered with an empty
+    # database next to it: stop and say what to do. One of 16 or older has its PG_VERSION right
+    # in the volume; one of 18 sits in 18/docker, beside the empty 19/docker this would create.
+    # Checked even when 19/docker exists: an interrupted pgautoupgrade leaves both behind.
     entrypoint:
       - sh
       - -c
       - |
         if [ -f /var/lib/postgresql/PG_VERSION ]; then
           echo "The volume holds a PostgreSQL $$(cat /var/lib/postgresql/PG_VERSION) database from an older layout." >&2
-          echo "Move it to PostgreSQL 18 first: docs/self-hosting/upgrades.md#upgrading-to-postgresql-18" >&2
+          echo "Move it to PostgreSQL $$PG_MAJOR first: docs/self-hosting/upgrades.md#upgrading-to-postgresql-19" >&2
           exit 1
         fi
+        for other in /var/lib/postgresql/*/docker/PG_VERSION; do
+          [ -f "$$other" ] || continue
+          [ "$$other" = "$$PGDATA/PG_VERSION" ] && continue
+          echo "The volume holds a PostgreSQL $$(cat "$$other") database, and this is PostgreSQL $$PG_MAJOR." >&2
+          echo "Move it to PostgreSQL $$PG_MAJOR first, or stay on $$(cat "$$other") for now: docs/self-hosting/upgrades.md#upgrading-to-postgresql-19" >&2
+          exit 1
+        done
         exec docker-entrypoint.sh "$$@"
       - --
     # A custom entrypoint drops the image's default command. Memory settings stated, so they
@@ -176,6 +186,8 @@ networks:
 volumes:
   inkadra-data:
   postgres-data:
-  # Only for moving a PostgreSQL 16 install: POSTGRES_DATA=postgres18-data (see the guide).
+  # Only for moving an install to a new major version: POSTGRES_DATA=postgres19-data (see the
+  # guide). Installs moved from 16 to 18 that way keep their database in postgres18-data.
   postgres18-data:
+  postgres19-data:
   valkey-data:

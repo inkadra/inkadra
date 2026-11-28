@@ -25,6 +25,13 @@ updates:
     directories: ["/", "/deploy", "/deploy/proxy/*"]
     schedule:
       interval: weekly
+    # A new major of PostgreSQL cannot read the data of the old one, and its image keeps the data
+    # in another folder: a bare bump would start an empty database. It is moved by hand, with a
+    # guide and the upgrade test (see docs/self-hosting/upgrades.md#upgrading-to-postgresql-19).
+    # deploy/compose.postgres18.yaml stays on 18 by design.
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
     groups:
       compose-images:
         patterns: ["*"]
