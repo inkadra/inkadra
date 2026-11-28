@@ -4,7 +4,7 @@
 # Pinned by digest so a commit always builds from the same base (#840); Dependabot moves the tag
 # and the digest together every week. The runtime stage still installs Debian's security updates
 # published since (`apt-get upgrade`): the image scan fails on fixed high-severity CVEs.
-FROM node:26.13-trixie-slim@sha256:e6bedef217677b276c591795e169840edd9096dbf13f29df8ef8d1856b8820bc AS node-base
+FROM node:26.13-trixie-slim@sha256:abe7e5a82b61a8ef67b315b85497c9e65173387ccf2f4a029248184b8e020be5 AS node-base
 
 FROM node-base AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
